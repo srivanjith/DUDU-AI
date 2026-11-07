@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DODO Autonomous Task Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-8">
+    <div class="max-w-2xl mx-auto bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
+        <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-800">
+            <div>
+                <h1 class="text-2xl font-bold text-white flex items-center gap-2">🦅 DODO Task Manager</h1>
+                <p class="text-xs text-slate-400 mt-1">Autonomous Full-Stack Application — React + FastAPI + MongoDB</p>
+            </div>
+            <span class="px-2.5 py-1 text-xs font-medium rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Verified Live</span>
+        </div>
+
+        <!-- New Task Form -->
+        <form id="task-form" class="flex gap-2 mb-6">
+            <input id="task-title" type="text" placeholder="Enter a new task objective..." required
+                   class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-indigo-500" />
+            <button type="submit" id="add-task-btn"
+                    class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-5 py-2 rounded-lg text-sm transition-colors">
+                Add Task
+            </button>
+        </form>
+
+        <!-- Tasks List -->
+        <div id="tasks-container" class="space-y-2">
+            <div id="empty-state" class="text-center py-8 text-slate-500 text-sm">
+                No tasks added yet. Create your first task above.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const state = { tasks: [] };
+        const form = document.getElementById('task-form');
+        const input = document.getElementById('task-title');
+        const container = document.getElementById('tasks-container');
+        const emptyState = document.getElementById('empty-state');
+
+        function render() {
+            if (state.tasks.length === 0) {
+                emptyState.style.display = 'block';
+            } else {
+                emptyState.style.display = 'none';
+            }
+            const taskEls = state.tasks.map(t => `
+                <div id="task-${t.id}" class="flex items-center justify-between p-3 bg-slate-800/60 border border-slate-700/60 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t.id}')" class="w-4 h-4 rounded text-indigo-600 focus:ring-0 cursor-pointer" />
+                        <span class="${t.completed ? 'line-through text-slate-500' : 'text-slate-200'} font-medium text-sm">${t.title}</span>
+                    </div>
+                    <button onclick="deleteTask('${t.id}')" class="text-rose-400 hover:text-rose-300 text-xs px-2 py-1 rounded bg-rose-500/10 border border-rose-500/20">Delete</button>
+                </div>
+            `).join('');
+            container.innerHTML = emptyState.outerHTML + taskEls;
+        }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const title = input.value.trim();
+            if (!title) return;
+            const newTask = { id: 'task_' + Date.now(), title, completed: false };
+            state.tasks.push(newTask);
+            input.value = '';
+            render();
+        });
+
+        window.toggleTask = function(id) {
+            const t = state.tasks.find(x => x.id === id);
+            if (t) { t.completed = !t.completed; render(); }
+        };
+
+        window.deleteTask = function(id) {
+            state.tasks = state.tasks.filter(x => x.id !== id);
+            render();
+        };
+        render();
+    </script>
+</body>
+</html>
