@@ -1,6 +1,16 @@
 {
   "users": [],
-  "conversations": [],
+  "conversations": [
+    {
+      "title": "New Conversation",
+      "mode": "assistant",
+      "project_id": null,
+      "created_at": "2026-11-07 14:36:14.200000",
+      "updated_at": "2026-11-07 14:36:14.200000",
+      "message_count": 0,
+      "_id": "6aef375ed6081e5cbae0179c"
+    }
+  ],
   "messages": [],
   "projects": [],
   "tasks": [
