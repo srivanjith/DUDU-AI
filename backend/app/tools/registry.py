@@ -160,6 +160,10 @@ class ToolRegistry:
         if defn.permission_level == PermissionLevel.READ:
             return True, None
 
+        # Terminal commands have internal granular command-level classification
+        if tool_name == "execute_terminal_command":
+            return True, None
+
         # Check explicit approval
         if approved:
             return True, None
@@ -221,6 +225,9 @@ class ToolRegistry:
         # 3. Real Tool Execution
         start_time = time.perf_counter()
         try:
+            if "approved" in inspect.signature(func).parameters and "approved" not in parameters:
+                parameters["approved"] = approved
+
             if inspect.iscoroutinefunction(func):
                 result = await func(**parameters)
             else:

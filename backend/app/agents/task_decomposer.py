@@ -33,6 +33,134 @@ class TaskDecomposer:
         tech_stack = analysis.tech_stack or ["React", "FastAPI", "MongoDB"]
         tech_str = ", ".join(tech_stack)
 
+        # Check if this is a Phase 5 Terminal Testing & Execution task
+        is_terminal_testing = (
+            ("test" in prompt_lower or "pytest" in prompt_lower or "terminal" in prompt_lower)
+            and any(w in prompt_lower for w in ["run", "execute", "check", "verify", "suite"])
+            and not any(w in prompt_lower for w in ["create a simple python task", "build a task app from scratch"])
+        )
+
+        if is_terminal_testing:
+            return [
+                DecomposedStep(
+                    step_id=1,
+                    title="PLAN: Inspect Workspace & Discover Test Files",
+                    description="Inspect registered project workspace directory to locate test suites and configuration files.",
+                    dependencies=[],
+                    expected_outcomes=["Workspace layout and test files discovered."],
+                    required_capabilities=["READ", "WORKSPACE_INSPECTION"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool="list_workspace_files",
+                    parameters={"subpath": "", "depth": 2},
+                ),
+                DecomposedStep(
+                    step_id=2,
+                    title="INSPECT: Analyze Test Suite & Dependency Requirements",
+                    description="Read test_tasks.py, verify imports, and detect required test runner dependencies (pytest).",
+                    dependencies=[1],
+                    expected_outcomes=["Test specifications inspected and dependency requirements analyzed."],
+                    required_capabilities=["READ", "DEPENDENCY_ANALYSIS"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool="read_file",
+                    parameters={"path": "test_tasks.py"},
+                ),
+                DecomposedStep(
+                    step_id=3,
+                    title="REQUEST APPROVAL: Verify & Request Approval for Dependencies",
+                    description="Explain dependency requirements to user and request approval before running dependency installation.",
+                    dependencies=[2],
+                    expected_outcomes=["User presented with dependency justification and explicit approval request."],
+                    required_capabilities=["DEPENDENCY_INSTALL", "APPROVAL_GATING"],
+                    risk_level=RiskLevel.HIGH.value,
+                    approval_required=True,
+                    permission_level="DEPENDENCY_INSTALL",
+                    tool="execute_terminal_command",
+                    parameters={"command": "python -m pip install pytest", "timeout_seconds": 60},
+                ),
+                DecomposedStep(
+                    step_id=4,
+                    title="EXECUTE: Execute Test Suite via Local Agent",
+                    description="Execute python -m pytest test_tasks.py -v inside the authorized workspace via the authenticated Local Agent.",
+                    dependencies=[3],
+                    expected_outcomes=["Real terminal execution initiated and real-time stdout/stderr streamed."],
+                    required_capabilities=["TEST", "REAL_TERMINAL_EXECUTION"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool="execute_terminal_command",
+                    parameters={"command": "python -m pytest test_tasks.py -v", "timeout_seconds": 60},
+                ),
+                DecomposedStep(
+                    step_id=5,
+                    title="OBSERVE: Capture Real Terminal stdout/stderr & Exit Code",
+                    description="Observe real process exit code, assertion failures, or passing indicators directly from process output.",
+                    dependencies=[4],
+                    expected_outcomes=["Terminal output and exit code captured without fabrication."],
+                    required_capabilities=["READ", "EXECUTION_OBSERVATION"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool=None,
+                    parameters={},
+                ),
+                DecomposedStep(
+                    step_id=6,
+                    title="EVALUATE: Evaluate Test Assertions & Diagnose Execution Failures",
+                    description="Analyze test results, stack traces, and verify whether all CRUD operations succeeded or if fixes are required.",
+                    dependencies=[5],
+                    expected_outcomes=["Root cause analysis of test outcome documented."],
+                    required_capabilities=["EVALUATION", "ROOT_CAUSE_ANALYSIS"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool=None,
+                    parameters={},
+                ),
+                DecomposedStep(
+                    step_id=7,
+                    title="FIX: Formulate & Verify Corrections",
+                    description="Propose and validate code changes if test failures were identified.",
+                    dependencies=[6],
+                    expected_outcomes=["Remediation diffs validated or confirmation that all tests already pass."],
+                    required_capabilities=["WRITE", "DIFF_GENERATION"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool=None,
+                    parameters={},
+                ),
+                DecomposedStep(
+                    step_id=8,
+                    title="VERIFY: Re-run Test Suite to Verify Complete Passing Status",
+                    description="Execute final regression verification run of python -m pytest test_tasks.py -v.",
+                    dependencies=[7],
+                    expected_outcomes=["All test assertions confirmed passing with exit code 0."],
+                    required_capabilities=["TEST", "VERIFICATION"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool="execute_terminal_command",
+                    parameters={"command": "python -m pytest test_tasks.py -v", "timeout_seconds": 60},
+                ),
+                DecomposedStep(
+                    step_id=9,
+                    title="DELIVER: Synthesize Verified Test Execution Results & Publish Delivery Report",
+                    description="Compile verified terminal output, execution timestamps, duration, and final delivery report.",
+                    dependencies=[8],
+                    expected_outcomes=["Phase 5 acceptance demonstration report published."],
+                    required_capabilities=["REPORTING"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool=None,
+                    parameters={},
+                ),
+            ]
+
         # Check if this is a real autonomous coding execution task (Phase 4 Spec)
         is_coding_implementation = (
             any(w in prompt_lower for w in ["create", "build", "implement", "add, view", "crud"])

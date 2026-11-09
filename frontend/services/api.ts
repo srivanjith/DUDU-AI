@@ -174,11 +174,66 @@ export async function saveWorkspaceFile(path: string, content: string) {
   return res.json();
 }
 
-export async function executeTerminalCommand(command: string) {
-  const res = await fetch(`${API_BASE}/terminal/execute`, {
+export async function executeTerminalCommand(
+  command: string,
+  cwd: string = "",
+  timeout_seconds: number = 60,
+  approved: boolean = false,
+  is_dev_server: boolean = false,
+  workspace_root?: string
+) {
+  const res = await fetch(`${API_BASE}/api/terminal/execute`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ command }),
+    body: JSON.stringify({
+      command,
+      cwd,
+      timeout_seconds,
+      approved,
+      is_dev_server,
+      workspace_root,
+    }),
+  });
+  return res.json();
+}
+
+export async function fetchLocalAgentStatus() {
+  const res = await fetch(`${API_BASE}/api/terminal/agent/status`);
+  return res.json();
+}
+
+export async function fetchTerminalProcesses() {
+  const res = await fetch(`${API_BASE}/api/terminal/processes?active_only=true`);
+  return res.json();
+}
+
+export async function killTerminalProcess(pid: number) {
+  const res = await fetch(`${API_BASE}/api/terminal/processes/${pid}/kill`, {
+    method: "POST",
+  });
+  return res.json();
+}
+
+export async function fetchTerminalHistory(limit: number = 50) {
+  const res = await fetch(`${API_BASE}/api/terminal/history?limit=${limit}`);
+  return res.json();
+}
+
+export async function fetchPendingApprovals() {
+  const res = await fetch(`${API_BASE}/api/terminal/pending-approvals`);
+  return res.json();
+}
+
+export async function approveTerminalCommand(executionId: string) {
+  const res = await fetch(`${API_BASE}/api/terminal/approve/${executionId}`, {
+    method: "POST",
+  });
+  return res.json();
+}
+
+export async function cancelTerminalCommand(executionId: string) {
+  const res = await fetch(`${API_BASE}/api/terminal/cancel/${executionId}`, {
+    method: "POST",
   });
   return res.json();
 }

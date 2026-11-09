@@ -157,6 +157,62 @@ export interface SystemHealth {
   local_agent: {
     status: string;
     authorized_workspace: string;
+    host?: string;
+    port?: number;
+    active_processes_count?: number;
   };
+}
+
+export interface TerminalProcess {
+  pid: number;
+  execution_id: string;
+  command: string;
+  cwd: string;
+  category: string;
+  port?: number | null;
+  status: "running" | "stopped" | "completed" | "failed";
+  start_time: string;
+  end_time?: string | null;
+  exit_code?: number | null;
+  log_lines_count?: number;
+  recent_logs?: string[];
+}
+
+export interface TerminalAuditRecord {
+  execution_id: string;
+  command: string;
+  category: string;
+  cwd: string;
+  success: boolean;
+  exit_code: number;
+  duration_ms: number;
+  error?: string | null;
+  timestamp: string;
+}
+
+export interface PendingApprovalCommand {
+  execution_id: string;
+  command: string;
+  cwd: string;
+  workspace_root?: string | null;
+  category: string;
+  reason: string;
+  status: string;
+  risk_level?: string;
+}
+
+export interface TerminalExecutionResult {
+  execution_id?: string;
+  command?: string;
+  category?: string;
+  success: boolean;
+  exit_code: number;
+  stdout?: string;
+  stderr?: string;
+  error?: string;
+  duration_ms?: number;
+  requires_approval?: boolean;
+  reason?: string;
+  risk_level?: string;
 }
 

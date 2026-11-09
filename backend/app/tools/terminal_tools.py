@@ -1,77 +1,52 @@
-import asyncio
-import os
-import subprocess
+"""
+DODO Terminal Execution Tools
+Routes terminal execution requests to the authenticated Local Agent runtime with
+permission checks and path jailing.
+"""
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from backend.app.core.config import settings
-from backend.app.core.security import check_command_safety, validate_workspace_path
-from backend.app.tools.registry import tool_registry, ToolDefinition, ToolParameter
+from backend.app.tools.local_agent_client import local_agent_client
+from backend.app.tools.registry import PermissionLevel, ToolDefinition, ToolParameter, tool_registry
 
-RUNNING_PROCESSES: Dict[str, asyncio.subprocess.Process] = {}
+logger = logging.getLogger("dodo.tools.terminal")
 
 
 @tool_registry.register(ToolDefinition(
     name="execute_terminal_command",
-    description="Executes a controlled command within the authorized project workspace.",
+    description="Executes an approved command inside the authorized workspace via the authenticated Local Agent.",
     permission_level="controlled",
     parameters=[
         ToolParameter(name="command", type="string", description="Terminal command to execute"),
-        ToolParameter(name="cwd", type="string", description="Working directory relative to workspace root", required=False, default=""),
+        ToolParameter(name="cwd", type="string", description="Subdirectory relative to workspace root", required=False, default=""),
+        ToolParameter(name="workspace_root", type="string", description="Explicit workspace directory path", required=False, default=None),
         ToolParameter(name="timeout_seconds", type="integer", description="Maximum time in seconds to wait", required=False, default=60),
+        ToolParameter(name="approved", type="boolean", description="Whether explicit user approval was granted", required=False, default=False),
+        ToolParameter(name="execution_id", type="string", description="Optional execution tracking ID", required=False, default=None),
+        ToolParameter(name="is_dev_server", type="boolean", description="Whether to run command as monitored dev server", required=False, default=False),
     ]
 ))
-async def execute_terminal_command(command: str, cwd: str = "", timeout_seconds: int = 60) -> Dict[str, Any]:
-    # Check command safety
-    is_safe, perm_level, reason = check_command_safety(command)
-    if not is_safe or perm_level == "prohibited":
-        return {"error": f"Security Policy Violation: {reason}"}
-
-    # Validate working directory
-    valid, working_dir, err = validate_workspace_path(cwd)
-    if not valid:
-        return {"error": err}
-    if not working_dir.exists():
-        working_dir.mkdir(parents=True, exist_ok=True)
-
-    try:
-        proc = await asyncio.create_subprocess_shell(
-            command,
-            cwd=str(working_dir),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-
-        try:
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                proc.communicate(),
-                timeout=float(timeout_seconds)
-            )
-            stdout = stdout_bytes.decode("utf-8", errors="replace")
-            stderr = stderr_bytes.decode("utf-8", errors="replace")
-
-            return {
-                "command": command,
-                "exit_code": proc.returncode,
-                "stdout": stdout,
-                "stderr": stderr,
-                "success": proc.returncode == 0,
-            }
-        except asyncio.TimeoutError:
-            try:
-                proc.kill()
-            except Exception:
-                pass
-            return {
-                "command": command,
-                "error": f"Command timed out after {timeout_seconds} seconds.",
-                "exit_code": -1,
-                "success": False,
-            }
-    except Exception as e:
-        return {
-            "command": command,
-            "error": f"Failed to execute command: {str(e)}",
-            "exit_code": -1,
-            "success": False,
-        }
-
+async def execute_terminal_command(
+    command: str,
+    cwd: str = "",
+    workspace_root: Optional[str] = None,
+    timeout_seconds: int = 60,
+    approved: bool = False,
+    execution_id: Optional[str] = None,
+    is_dev_server: bool = False,
+) -> Dict[str, Any]:
+    """
+    Executes terminal commands through the secure Local Agent.
+    """
+    effective_root = workspace_root or settings.AUTHORIZED_WORKSPACE_DIR
+    res = await local_agent_client.execute(
+        command=command,
+        cwd=cwd,
+        workspace_root=effective_root,
+        timeout=timeout_seconds,
+        approved=approved,
+        execution_id=execution_id,
+        is_dev_server=is_dev_server,
+    )
+    return res

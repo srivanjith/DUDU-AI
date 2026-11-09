@@ -88,3 +88,9 @@ class CheckpointRepository(BaseRepository):
 
     def get_by_workspace(self, workspace_id: str) -> List[Dict[str, Any]]:
         return self.find_all(query={"workspace_id": workspace_id}, sort=[("created_at", -1)])
+
+
+workspace_repo = WorkspaceRepository()
+checkpoint_repo = CheckpointRepository()
+
+
