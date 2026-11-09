@@ -221,3 +221,4 @@ async def websocket_chat_endpoint(websocket: WebSocket, conversation_id: str):
         logger.info(f"WebSocket client disconnected from conversation {conversation_id}")
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
+

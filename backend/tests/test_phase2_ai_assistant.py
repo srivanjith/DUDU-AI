@@ -226,3 +226,4 @@ def test_error_handling():
     r3 = client.post("/api/models/roles", json={"role": "invalid_role", "model_name": "qwen2.5:7b"})
     assert r3.status_code == 400
     print("\n[Test 12 PASSED] Validation and error handling verified.")
+
