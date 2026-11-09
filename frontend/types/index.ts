@@ -24,27 +24,63 @@ export interface TaskStep {
   description: string;
   tool?: string;
   parameters?: Record<string, any>;
-  status: "pending" | "in_progress" | "completed" | "failed" | "skipped";
+  status: "pending" | "awaiting_approval" | "in_progress" | "completed" | "failed" | "skipped";
   result?: string;
   error?: string;
+  dependencies?: number[];
+  expected_outcomes?: string[];
+  required_capabilities?: string[];
+  risk_level?: string;
+  approval_required?: boolean;
+  permission_level?: string;
 }
 
 export interface TaskPlan {
+  task_id?: string;
+  user_request?: string;
   objective: string;
   analysis: string;
+  tech_stack?: string[];
+  complexity_score?: number;
+  risk_level?: string;
+  approval_required?: boolean;
+  required_capabilities?: string[];
   estimated_steps: number;
   steps: TaskStep[];
+}
+
+export interface ExecutionEvent {
+  event_id: string;
+  timestamp: string;
+  type: string;
+  phase: string;
+  message: string;
+  details?: Record<string, any>;
+}
+
+export interface ApprovalRequest {
+  approval_id: string;
+  task_id: string;
+  step_id: number;
+  tool_name: string;
+  permission_level: string;
+  risk_level: string;
+  description: string;
+  parameters?: Record<string, any>;
+  status: "pending" | "approved" | "rejected";
 }
 
 export interface AgentTask {
   id: string;
   prompt: string;
   workspace_path: string;
-  status: "queued" | "planning" | "executing" | "evaluating" | "fixing" | "verified" | "completed" | "failed" | "cancelled";
+  status: "queued" | "planning" | "planned" | "awaiting_approval" | "executing" | "observing" | "evaluating" | "fixing" | "verified" | "completed" | "failed" | "cancelled";
   plan?: TaskPlan;
   current_step_index: number;
   result_summary?: string;
   verified: boolean;
+  pending_approval?: ApprovalRequest | null;
+  events?: ExecutionEvent[];
   created_at: string;
   updated_at: string;
 }

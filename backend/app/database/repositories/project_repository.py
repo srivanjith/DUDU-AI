@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from pymongo import DESCENDING
@@ -12,7 +12,7 @@ class ProjectRepository(BaseRepository):
 
     def create_project(self, name: str, workspace_path: Optional[str] = None, description: str = "") -> Dict[str, Any]:
         path = str(Path(workspace_path or settings.AUTHORIZED_WORKSPACE_DIR).resolve())
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         doc = {
             "name": name,
             "workspace_path": path,
@@ -38,7 +38,7 @@ class TaskRepository(BaseRepository):
         super().__init__("tasks")
 
     def create_task(self, prompt: str, project_id: Optional[str] = None, workspace_path: Optional[str] = None, mode: str = "developer") -> Dict[str, Any]:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         doc = {
             "prompt": prompt,
             "project_id": project_id,
@@ -49,6 +49,8 @@ class TaskRepository(BaseRepository):
             "current_step_index": 0,
             "result_summary": None,
             "verified": False,
+            "events": [],
+            "pending_approval": None,
             "created_at": now,
             "updated_at": now,
         }
@@ -58,7 +60,7 @@ class TaskRepository(BaseRepository):
         return self.update(task_id, {
             "plan": plan_dict,
             "status": "executing",
-            "updated_at": datetime.utcnow()
+            "updated_at": datetime.now(timezone.utc)
         })
 
     def update_step_status(self, task_id: str, step_id: int, status: str, result: Optional[str] = None, error: Optional[str] = None) -> Optional[Dict[str, Any]]:
@@ -80,14 +82,22 @@ class TaskRepository(BaseRepository):
         return self.update(task_id, {
             "plan": plan,
             "current_step_index": step_id,
-            "updated_at": datetime.utcnow(),
+            "updated_at": datetime.now(timezone.utc),
         })
+
+    def add_event(self, task_id: str, event_dict: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        task = self.find_by_id(task_id)
+        if not task:
+            return None
+        events = task.get("events", [])
+        events.append(event_dict)
+        return self.update(task_id, {"events": events, "updated_at": datetime.now(timezone.utc)})
 
     def complete_task(self, task_id: str, status: str = "completed", summary: str = "", verified: bool = True) -> Optional[Dict[str, Any]]:
         return self.update(task_id, {
             "status": status,
             "result_summary": summary,
             "verified": verified,
-            "updated_at": datetime.utcnow(),
+            "updated_at": datetime.now(timezone.utc),
         })
 

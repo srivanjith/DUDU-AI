@@ -78,14 +78,27 @@ class TaskStep(BaseModel):
     description: str
     tool: Optional[str] = None
     parameters: Optional[Dict[str, Any]] = None
-    status: str = "pending"  # pending, in_progress, completed, failed, skipped
+    status: str = "pending"  # pending, awaiting_approval, in_progress, completed, failed, skipped
     result: Optional[str] = None
     error: Optional[str] = None
+    dependencies: List[int] = Field(default_factory=list)
+    expected_outcomes: List[str] = Field(default_factory=list)
+    required_capabilities: List[str] = Field(default_factory=list)
+    risk_level: str = "low"
+    approval_required: bool = False
+    permission_level: str = "READ"
 
 
 class TaskPlan(BaseModel):
+    task_id: Optional[str] = None
+    user_request: Optional[str] = None
     objective: str
     analysis: str
+    tech_stack: List[str] = Field(default_factory=list)
+    complexity_score: int = 1
+    risk_level: str = "low"
+    approval_required: bool = False
+    required_capabilities: List[str] = Field(default_factory=list)
     estimated_steps: int
     steps: List[TaskStep]
 

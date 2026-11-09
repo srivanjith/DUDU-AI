@@ -49,12 +49,12 @@ export async function setModelRole(role: string, model_name: string) {
 }
 
 export async function fetchTasks() {
-  const res = await fetch(`${API_BASE}/tasks`);
+  const res = await fetch(`${API_BASE}/api/agent/tasks`);
   return res.json();
 }
 
 export async function createTask(prompt: string, mode: string = "developer") {
-  const res = await fetch(`${API_BASE}/tasks`, {
+  const res = await fetch(`${API_BASE}/api/agent/tasks`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt, mode }),
@@ -63,12 +63,31 @@ export async function createTask(prompt: string, mode: string = "developer") {
 }
 
 export async function fetchTask(id: string) {
-  const res = await fetch(`${API_BASE}/tasks/${id}`);
+  const res = await fetch(`${API_BASE}/api/agent/tasks/${id}`);
+  return res.json();
+}
+
+export async function startTask(id: string) {
+  const res = await fetch(`${API_BASE}/api/agent/tasks/${id}/start`, { method: "POST" });
   return res.json();
 }
 
 export async function cancelTask(id: string) {
-  const res = await fetch(`${API_BASE}/tasks/${id}/cancel`, { method: "POST" });
+  const res = await fetch(`${API_BASE}/api/agent/tasks/${id}/cancel`, { method: "POST" });
+  return res.json();
+}
+
+export async function fetchTaskEvents(id: string) {
+  const res = await fetch(`${API_BASE}/api/agent/tasks/${id}/events`);
+  return res.json();
+}
+
+export async function approveTaskStep(id: string, stepId: number, approved: boolean = true, comment?: string) {
+  const res = await fetch(`${API_BASE}/api/agent/tasks/${id}/approve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ step_id: stepId, approved, comment }),
+  });
   return res.json();
 }
 

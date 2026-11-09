@@ -20,6 +20,7 @@ import {
   fetchTasks,
   createTask,
   cancelTask,
+  approveTaskStep,
 } from "@/services/api";
 
 export default function Home() {
@@ -208,8 +209,8 @@ export default function Home() {
       setActiveTask(task);
       setIsExecutingTask(true);
 
-      // Start SSE stream for task execution
-      const eventSource = new EventSource(`http://localhost:8000/tasks/${task.id}/stream`);
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const eventSource = new EventSource(`${apiBase}/api/agent/tasks/${task.id}/stream`);
 
       eventSource.onmessage = (event) => {
         try {
@@ -219,9 +220,52 @@ export default function Home() {
               ...prev,
               plan: {
                 objective: data.objective,
+                analysis: data.analysis,
+                tech_stack: data.tech_stack,
+                complexity_score: data.complexity_score,
+                risk_level: data.risk_level,
+                approval_required: data.approval_required,
+                estimated_steps: data.total_steps,
                 steps: data.steps,
               },
             }));
+          } else if (data.type === "approval_required") {
+            setActiveTask((prev: any) => ({
+              ...prev,
+              status: "awaiting_approval",
+              pending_approval: {
+                approval_id: data.approval_id,
+                task_id: task.id,
+                step_id: data.step_id,
+                tool_name: data.title,
+                permission_level: data.permission_level,
+                risk_level: data.risk_level,
+                description: data.message,
+                status: "pending",
+              },
+            }));
+            setIsExecutingTask(false);
+            eventSource.close();
+          } else if (data.type === "step_start") {
+            setActiveTask((prev: any) => {
+              if (!prev?.plan) return prev;
+              const updatedSteps = prev.plan.steps.map((s: any) =>
+                s.step_id === data.step_id
+                  ? { ...s, status: "in_progress" }
+                  : s
+              );
+              return { ...prev, plan: { ...prev.plan, steps: updatedSteps } };
+            });
+          } else if (data.type === "observation") {
+            setActiveTask((prev: any) => {
+              if (!prev?.plan) return prev;
+              const updatedSteps = prev.plan.steps.map((s: any) =>
+                s.step_id === data.step_id
+                  ? { ...s, result: data.observation }
+                  : s
+              );
+              return { ...prev, plan: { ...prev.plan, steps: updatedSteps } };
+            });
           } else if (data.type === "step_complete") {
             setActiveTask((prev: any) => {
               if (!prev?.plan) return prev;
@@ -272,6 +316,53 @@ export default function Home() {
     }
   };
 
+  const handleApproveStep = async (taskId: string, stepId: number, approved: boolean) => {
+    try {
+      await approveTaskStep(taskId, stepId, approved);
+      if (approved) {
+        setIsExecutingTask(true);
+        setActiveTask((prev: any) => ({ ...prev, pending_approval: null, status: "executing" }));
+        // Re-attach stream with resume=true
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const eventSource = new EventSource(`${apiBase}/api/agent/tasks/${taskId}/stream?resume=true`);
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === "step_complete") {
+              setActiveTask((prev: any) => {
+                if (!prev?.plan) return prev;
+                const updated = prev.plan.steps.map((s: any) =>
+                  s.step_id === data.step_id ? { ...s, status: "completed", result: data.result_preview } : s
+                );
+                return { ...prev, plan: { ...prev.plan, steps: updated } };
+              });
+            } else if (data.type === "task_completed") {
+              setActiveTask((prev: any) => ({
+                ...prev,
+                status: "completed",
+                verified: data.verified,
+                result_summary: data.report,
+              }));
+              setIsExecutingTask(false);
+              eventSource.close();
+              loadTasks();
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        };
+        eventSource.onerror = () => {
+          setIsExecutingTask(false);
+          eventSource.close();
+        };
+      } else {
+        setActiveTask((prev: any) => ({ ...prev, pending_approval: null, status: "cancelled" }));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleCancelTask = async (taskId: string) => {
     try {
       await cancelTask(taskId);
@@ -317,6 +408,7 @@ export default function Home() {
             onSelectTask={setActiveTask}
             onCreateTask={handleCreateTask}
             onCancelTask={handleCancelTask}
+            onApproveStep={handleApproveStep}
             isExecuting={isExecutingTask}
           />
         )}
