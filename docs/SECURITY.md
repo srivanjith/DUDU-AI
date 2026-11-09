@@ -1,26 +1,23 @@
-# DODO Security & Isolation Architecture
+# 🛡️ DODO Security & Sandbox Boundaries
 
-## 1. Zero Trust Model Execution
+## Security Principles
 
-Large Language Models (LLMs) are never granted direct operating-system shell access. All actions are routed through the `ToolRegistry` and vetted by permission managers.
+DODO is designed to operate on your local development machine with complete autonomy under strict, auditable user-controlled boundaries:
 
-### Security Boundaries:
-1. **Workspace Path Jail**: All filesystem operations (`read_file`, `write_file`, `edit_file`) resolve relative to `AUTHORIZED_WORKSPACE_DIR` (`D:\DODO\workspace`). Path traversal attacks (such as `../../windows/system32`) trigger immediate security violations.
-2. **Command Sanitization**: Terminal commands are inspected for dangerous patterns (`rmdir /s /q c:`, `format`, `del /s /q c:\windows`, etc.). Destructive commands are strictly prohibited.
-3. **Secret Redaction**: Regex scanners scrub API keys, bearer tokens, passwords, and MongoDB authentication strings from execution logs and API responses.
-4. **Local Agent Authentication**: The separate `local_agent` service enforces header token verification (`X-DODO-Token`). Unauthenticated requests are rejected with HTTP 401.
-
----
-
-## 2. Command Permission Matrix
-
-| Operation Category | Automatic Execution | Requires Confirmation | Prohibited |
-|---|:---:|:---:|:---:|
-| Project Inspection (`git status`, `dir`, `read_file`) | ✅ | — | — |
-| Workspace File Creation (`write_file`) | ✅ (Controlled) | — | — |
-| File Modification (`edit_file`) | ✅ (Generates Diff) | — | — |
-| Build / Test Execution (`pytest`, `npm test`) | ✅ | — | — |
-| Package Installation (`npm install`, `pip install`) | ✅ (Controlled) | — | — |
-| Destructive File Deletion (`delete_file`) | — | ✅ | — |
-| System Modification (`format`, `shutdown`) | — | — | ❌ |
-
+1. **Path Jailing**: All filesystem operations are strictly jailed inside the authorized workspace directory (`D:\DODO\workspace`). Path traversal attempts (`../..`) are blocked.
+2. **Local Agent Authentication**: The Python Local Agent (port 8001) requires a pre-shared cryptographic bearer token (`LOCAL_AGENT_SECRET_TOKEN`) to accept command execution requests.
+3. **Command Permission Registry**:
+   - **Automatic (READ)**: Read-only inspection (`git status`, `git diff`, `dir`, `ls`, `cat`, `node -v`).
+   - **Controlled**: Known project build commands (`npm install`, `pip install`, `pytest`).
+   - **Requires Approval**: Unfamiliar commands, delete operations, or long-running development servers.
+   - **Prohibited**: Destructive shell patterns (`format C:`, `del /f /s C:\Windows`, `rm -rf /`, `shutdown`, `drop database`).
+4. **Browser Automation Security (`BrowserSecurityPolicy`)**:
+   - Blocks dangerous protocols: `file://`, `javascript:`.
+   - Allows safe development environments: `http://localhost:*`, `http://127.0.0.1:*`, `data:text/html`.
+   - Sensitive Action Gating: Clicks on buttons containing "delete", "remove", "drop", "purge", "checkout", or "pay" mandate explicit user approval.
+5. **Secret Filtering & Memory Privacy**:
+   - API keys, JWT bearer tokens, AWS credentials, and passwords are automatically redacted before logging or persistence (`[REDACTED_SECRET]`).
+   - Hidden chain-of-thought traces (`<think>...</think>`) are filtered from memory storage.
+   - Prompt injection attempts inside stored memories are neutralized.
+6. **Zero Unauthorized External Transmission**:
+   - DODO never sends code, private files, or persistent memory data to external cloud AI APIs.

@@ -16636,7 +16636,28 @@
       "_id": "6af1bc3241dfef06598497c4"
     }
   ],
-  "memories": [],
+  "memories": [
+    {
+      "content": "Verified Fix: Resolved Synthetic Error in task manager application frontend script.",
+      "category": "task_experience",
+      "project_id": "phase8_e2e_acceptance",
+      "conversation_id": null,
+      "importance": 5,
+      "tags": [
+        "e2e",
+        "acceptance",
+        "fix"
+      ],
+      "source": "user_input",
+      "is_verified": true,
+      "supersedes_id": null,
+      "status": "active",
+      "metadata": {},
+      "created_at": "2026-11-09T13:32:17.148011+00:00",
+      "updated_at": "2026-11-09T13:32:17.148011+00:00",
+      "_id": "6af1cb6152bf051c6d0f61a5"
+    }
+  ],
   "model_configs": [
     {
       "model_name": "qwen2.5:7b",
@@ -17481,245 +17502,23 @@
       "event_type": "memory_created",
       "actor": "system",
       "details": {
-        "memory_id": "6af1c69b5708878e6d485360",
+        "memory_id": "6af1c7beef0ad2d2ec0c59af",
         "category": "project",
-        "project_id": "dodo_core"
+        "project_id": "phase7_final_check"
       },
-      "timestamp": "2026-11-09 13:11:55.419000",
-      "_id": "6af1c69b5708878e6d485361"
+      "timestamp": "2026-11-09 13:16:46.081000",
+      "_id": "6af1c7beef0ad2d2ec0c59b0"
     },
     {
       "event_type": "memory_created",
       "actor": "system",
       "details": {
-        "memory_id": "6af1c69b5708878e6d485362",
-        "category": "preference",
-        "project_id": null
-      },
-      "timestamp": "2026-11-09 13:11:55.474000",
-      "_id": "6af1c69b5708878e6d485363"
-    },
-    {
-      "event_type": "all_memories_cleared",
-      "actor": "user",
-      "details": {
-        "deleted_count": 2
-      },
-      "timestamp": "2026-11-09 13:11:55.558000",
-      "_id": "6af1c69b5708878e6d485364"
-    },
-    {
-      "event_type": "all_memories_cleared",
-      "actor": "user",
-      "details": {
-        "deleted_count": 0
-      },
-      "timestamp": "2026-11-09 13:11:55.587000",
-      "_id": "6af1c69b5708878e6d485365"
-    },
-    {
-      "event_type": "memory_created",
-      "actor": "system",
-      "details": {
-        "memory_id": "6af1c69b5708878e6d485366",
-        "category": "project",
-        "project_id": "dodo_demo"
-      },
-      "timestamp": "2026-11-09 13:11:55.643000",
-      "_id": "6af1c69b5708878e6d485367"
-    },
-    {
-      "event_type": "all_memories_cleared",
-      "actor": "user",
-      "details": {
-        "deleted_count": 1
-      },
-      "timestamp": "2026-11-09 13:11:55.725000",
-      "_id": "6af1c69b5708878e6d485368"
-    },
-    {
-      "event_type": "memory_created",
-      "actor": "system",
-      "details": {
-        "memory_id": "6af1c69b5708878e6d485369",
-        "category": "project",
-        "project_id": "test_app"
-      },
-      "timestamp": "2026-11-09 13:11:55.780000",
-      "_id": "6af1c69b5708878e6d48536a"
-    },
-    {
-      "event_type": "memory_created",
-      "actor": "system",
-      "details": {
-        "memory_id": "6af1c69b5708878e6d48536b",
-        "category": "project",
-        "project_id": "test_app"
-      },
-      "timestamp": "2026-11-09 13:11:55.863000",
-      "_id": "6af1c69b5708878e6d48536c"
-    },
-    {
-      "event_type": "all_memories_cleared",
-      "actor": "user",
-      "details": {
-        "deleted_count": 2
-      },
-      "timestamp": "2026-11-09 13:11:55.943000",
-      "_id": "6af1c69b5708878e6d48536d"
-    },
-    {
-      "event_type": "memory_created",
-      "actor": "system",
-      "details": {
-        "memory_id": "6af1c69b5708878e6d48536e",
-        "category": "project",
-        "project_id": "project_alpha"
-      },
-      "timestamp": "2026-11-09 13:11:55.997000",
-      "_id": "6af1c69b5708878e6d48536f"
-    },
-    {
-      "event_type": "memory_created",
-      "actor": "system",
-      "details": {
-        "memory_id": "6af1c69c5708878e6d485370",
-        "category": "project",
-        "project_id": "project_beta"
-      },
-      "timestamp": "2026-11-09 13:11:56.093000",
-      "_id": "6af1c69c5708878e6d485371"
-    },
-    {
-      "event_type": "all_memories_cleared",
-      "actor": "user",
-      "details": {
-        "deleted_count": 2
-      },
-      "timestamp": "2026-11-09 13:11:56.177000",
-      "_id": "6af1c69c5708878e6d485372"
-    },
-    {
-      "event_type": "memory_created",
-      "actor": "system",
-      "details": {
-        "memory_id": "6af1c69c5708878e6d485373",
-        "category": "project",
-        "project_id": "dodo_core"
-      },
-      "timestamp": "2026-11-09 13:11:56.253000",
-      "_id": "6af1c69c5708878e6d485374"
-    },
-    {
-      "event_type": "memory_created",
-      "actor": "system",
-      "details": {
-        "memory_id": "6af1c69c5708878e6d485375",
+        "memory_id": "6af1cb6152bf051c6d0f61a5",
         "category": "task_experience",
-        "project_id": "dodo_core"
+        "project_id": "phase8_e2e_acceptance"
       },
-      "timestamp": "2026-11-09 13:11:56.336000",
-      "_id": "6af1c69c5708878e6d485376"
-    },
-    {
-      "event_type": "memory_created",
-      "actor": "system",
-      "details": {
-        "memory_id": "6af1c69c5708878e6d485377",
-        "category": "preference",
-        "project_id": null
-      },
-      "timestamp": "2026-11-09 13:11:56.430000",
-      "_id": "6af1c69c5708878e6d485378"
-    },
-    {
-      "event_type": "all_memories_cleared",
-      "actor": "user",
-      "details": {
-        "deleted_count": 3
-      },
-      "timestamp": "2026-11-09 13:11:56.610000",
-      "_id": "6af1c69c5708878e6d485379"
-    },
-    {
-      "event_type": "memory_created",
-      "actor": "system",
-      "details": {
-        "memory_id": "6af1c69c5708878e6d48537a",
-        "category": "preference",
-        "project_id": null
-      },
-      "timestamp": "2026-11-09 13:11:56.702000",
-      "_id": "6af1c69c5708878e6d48537b"
-    },
-    {
-      "event_type": "all_memories_cleared",
-      "actor": "user",
-      "details": {
-        "deleted_count": 1
-      },
-      "timestamp": "2026-11-09 13:11:56.806000",
-      "_id": "6af1c69c5708878e6d48537c"
-    },
-    {
-      "event_type": "memory_created",
-      "actor": "system",
-      "details": {
-        "memory_id": "6af1c69c5708878e6d48537d",
-        "category": "project",
-        "project_id": "shop_app"
-      },
-      "timestamp": "2026-11-09 13:11:57.005000",
-      "_id": "6af1c69d5708878e6d48537e"
-    },
-    {
-      "event_type": "all_memories_cleared",
-      "actor": "user",
-      "details": {
-        "deleted_count": 0
-      },
-      "timestamp": "2026-11-09 13:11:57.204000",
-      "_id": "6af1c69d5708878e6d48537f"
-    },
-    {
-      "event_type": "memory_created",
-      "actor": "system",
-      "details": {
-        "memory_id": "6af1c69d5708878e6d485380",
-        "category": "project",
-        "project_id": "grpc_core"
-      },
-      "timestamp": "2026-11-09 13:11:57.324000",
-      "_id": "6af1c69d5708878e6d485381"
-    },
-    {
-      "event_type": "all_memories_cleared",
-      "actor": "user",
-      "details": {
-        "deleted_count": 1
-      },
-      "timestamp": "2026-11-09 13:11:57.487000",
-      "_id": "6af1c69d5708878e6d485382"
-    },
-    {
-      "event_type": "memory_created",
-      "actor": "system",
-      "details": {
-        "memory_id": "6af1c69d5708878e6d485383",
-        "category": "project",
-        "project_id": "acceptance_demo_project"
-      },
-      "timestamp": "2026-11-09 13:11:57.615000",
-      "_id": "6af1c69d5708878e6d485384"
-    },
-    {
-      "event_type": "all_memories_cleared",
-      "actor": "user",
-      "details": {
-        "deleted_count": 0
-      },
-      "timestamp": "2026-11-09 13:11:57.847000",
-      "_id": "6af1c69d5708878e6d485385"
+      "timestamp": "2026-11-09 13:32:17.174000",
+      "_id": "6af1cb6152bf051c6d0f61a6"
     }
   ],
   "settings": []

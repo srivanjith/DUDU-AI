@@ -1,7 +1,8 @@
-# DODO Architecture Blueprint
+# 🏛️ DODO Architecture Blueprint
 
 **Tagline:** Your AI. Your Machine. Your Rules.  
-**Product Category:** Autonomous AI Agent & AI Software Development Environment
+**Product Category:** Autonomous AI Agent & Local AI Software Development Environment  
+**Git Repository:** [https://github.com/srivanjith/DUDU-AI.git](https://github.com/srivanjith/DUDU-AI.git)
 
 ---
 
@@ -9,57 +10,68 @@
 
 DODO is an independent, local-first autonomous development platform and conversational AI assistant built without any reliance on proprietary APIs (Anthropic, Claude, Antigravity, or other hosted vendor locks).
 
-The platform consists of three core applications operating in synergy:
-1. **DODO Web Application (`frontend/`)**: Modern responsive IDE & assistant UI built with Next.js, React, Tailwind CSS, Monaco Editor, and Server-Sent Events / WebSockets.
-2. **DODO Backend (`backend/`)**: High-performance Python FastAPI service managing authentication, conversation persistence, intelligent model routing, stateful agent planning, bounded execution, and MongoDB operations.
-3. **DODO Local Agent (`local_agent/`)**: Isolated local execution runtime that connects securely to the backend, enforcing strict workspace path boundaries, sandboxed command execution, and Playwright-driven browser automation.
+The platform consists of four primary subsystems operating in synergy:
+1. **DODO Web Application (`frontend/`)**: Modern responsive IDE & assistant UI built with Next.js, React, Tailwind CSS, Monaco Editor, Server-Sent Events, and WebSockets.
+2. **DODO Backend (`backend/`)**: High-performance Python FastAPI service managing authentication, conversation persistence, hardware-aware model routing, stateful agent planning, unified diagnostics, and database operations.
+3. **DODO Local Agent (`local_agent/`)**: Isolated local execution runtime that connects securely on port 8001, enforcing strict workspace path boundaries, sandboxed command execution, and Playwright-driven browser automation.
+4. **Persistent Memory Engine (`backend/app/memory/`)**: Multi-category long-term memory engine with deduplication, conflict resolution, secret filtering, and multi-factor semantic retrieval.
 
 ```
                     ┌──────────────────────────────┐
                     │      DODO Web Frontend       │
                     │   Next.js / React / Monaco   │
+                    │  Chat • Dev • Terminal • Web │
                     └──────────────┬───────────────┘
-                                   │ HTTP / SSE / WS
+                                   │ HTTP / SSE / WS (Port 8000)
                                    ▼
                     ┌──────────────────────────────┐
                     │         DODO Backend         │
                     │       FastAPI Runtime        │
                     ├──────────────┬───────────────┤
                     │ Model Router │ Agent Engine  │
-                    │ Tool Registry│ Memory Store  │
+                    │ Tool Registry│ Memory Engine │
+                    │ Diagnostics  │ Migration CLI │
                     └──────┬───────┴───────┬───────┘
                            │               │
-            Token-Auth RPC │               │ PyMongo / Motor
+            Token-Auth RPC │               │ PyMongo / mongomock
                            ▼               ▼
         ┌───────────────────────┐   ┌───────────────────────────┐
         │    DODO Local Agent   │   │     MongoDB Database      │
-        │ Playwright / Terminal │   │         (dodo_db)         │
+        │ Playwright / Terminal │   │    (dodo_db / Fallback)   │
         └───────────────────────┘   └───────────────────────────┘
 ```
 
 ---
 
-## 2. Operating Modes
+## 2. Operating Modes & Capabilities
 
 ### Mode A: AI Assistant
-- Conversational chat with streaming tokens.
+- Conversational chat with streaming tokens via Server-Sent Events (SSE).
 - Context retention across multi-turn sessions stored in MongoDB `conversations` and `messages`.
-- Intelligent task classification to route requests between lightweight models (`llama3.2:1b`), general models (`qwen2.5:7b`), and reasoning models (`deepseek-r1:8b`).
+- Autonomous memory capture from conversational interactions (detects tech stacks, fixes, preferences).
 
-### Mode B: Autonomous Developer
+### Mode B: Autonomous Dev
 - Stateful execution lifecycle:
   $$\text{PLAN} \longrightarrow \text{EXECUTE} \longrightarrow \text{OBSERVE} \longrightarrow \text{EVALUATE} \longrightarrow \text{FIX} \longrightarrow \text{VERIFY} \longrightarrow \text{DELIVER}$$
 - Deconstructs complex user requests into discrete, tool-executable steps.
 - Bounded execution with retry limits and automated verification (running pytest and Playwright).
 
-### Mode C: Computer & Browser Agent
+### Mode C: Terminal & Processes
 - Controlled terminal execution with command safety sanitization.
 - Workspace filesystem jail ensuring operations never escape authorized directories.
-- Playwright headless browser automation for live web app inspection, console diagnostics, and visual screenshot rendering.
+- Streaming stdout/stderr output directly to xterm.js UI.
+
+### Browser Verification
+- Playwright headless Chromium automation for live web app inspection, console diagnostics, and visual screenshot rendering.
+- Sensitive action approval gating (delete button clicks, purchases).
+
+### Memory Center
+- Persistent memory across 5 categories (`project`, `task_experience`, `preference`, `knowledge`, `conversation`).
+- Multi-factor retrieval engine (token overlap, importance weighting, recency decay, project isolation).
 
 ---
 
-## 3. Model Routing Architecture
+## 3. Hardware-Aware Model Routing
 
 ```
                        User Prompt
@@ -78,10 +90,7 @@ The platform consists of three core applications operating in synergy:
                            │
                            ▼
                      Model Selected
-                           │
-                           ▼
-                   Token Stream / Fallback
+                 (qwen2.5-coder:1.5b)
 ```
-
-DODO dynamically selects the optimal model based on task intent and hardware constraints. If the configured model is not yet pulled locally, DODO gracefully selects an installed model or delivers native intelligence instructions.
-
+- Fits 100% inside 4GB VRAM on RTX 3050 Laptop GPU.
+- Delivers 116+ tokens/sec throughput with sub-5s TTFT.

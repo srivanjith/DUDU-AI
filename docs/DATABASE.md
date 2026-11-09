@@ -1,37 +1,82 @@
-# DODO MongoDB Architecture & Schema Specification
+# 🗄️ DODO Database Architecture & Migration Guide
 
-**Database:** `dodo_db`  
-**Driver:** `pymongo` / `motor` with persistent local standalone fallback
+## Overview
+
+DODO provides a dual-mode persistence architecture:
+1. **Production Mode**: External standalone MongoDB instance (local `mongod` or MongoDB Atlas cloud cluster).
+2. **Standalone Fallback Mode**: In-process `mongomock` instance backed by JSON file persistence at `D:\DODO\data\local_db_store.json`.
+
+If an external MongoDB daemon is not running, DODO automatically activates the persistent fallback store, ensuring conversations, tasks, code checkpoints, and memories survive application restarts.
+
+DODO **never falsely reports a real MongoDB connection**. When using fallback persistence, `/api/health` and `/api/diagnostics` explicitly report:
+```json
+{
+  "status": "healthy_fallback",
+  "database": "dodo_db",
+  "mode": "in-process mongomock (standalone persistence)",
+  "collections_count": 15,
+  "latency_ms": 0.1
+}
+```
 
 ---
 
-## 1. Primary Collections Overview
+## The 15 Collections
 
-DODO manages 15 purpose-built collections:
-
-| Collection | Schema / Role | Indexes |
+| Collection | Description | Primary Indexes |
 |---|---|---|
-| `users` | User credentials, roles, preferences | `email (unique)`, `username (unique)` |
-| `conversations` | Multi-turn dialog sessions, active mode, metadata | `updated_at (desc)`, `project_id`, `user_id` |
-| `messages` | Individual chat turns, role, content, tool calls | `(conversation_id, created_at)`, `role`, `content (text)` |
-| `projects` | Registered project repositories and workspaces | `name`, `workspace_path (unique)` |
-| `tasks` | High-level autonomous agent objectives & plans | `status`, `project_id`, `created_at (desc)` |
-| `agent_runs` | Individual execution traces per task | `task_id`, `status` |
-| `tool_executions` | Detailed log of all tool invocations, duration, IO | `task_id`, `tool_name`, `status` |
-| `memories` | Persistent semantic & procedural facts | `project_id`, `category`, `content (text)` |
-| `model_configs` | Roles, context length, quantization profiles | `model_name (unique)`, `role` |
-| `model_metrics` | Latency, tokens/sec, prompt tokens | `(model_name, timestamp desc)` |
-| `workspace_files` | File paths, SHA256 hashes, byte sizes | `(project_id, file_path unique)`, `file_hash` |
-| `code_chunks` | Parsed syntax blocks and code embeddings | `(project_id, file_path)`, `content (text)` |
-| `permissions` | Granted execution privileges per workspace | `operation` |
-| `audit_logs` | Security events, prohibited command attempts | `timestamp (desc)`, `event_type` |
-| `settings` | System preferences and runtime defaults | `key (unique)` |
+| `users` | User credentials and settings | `username` (unique) |
+| `conversations` | Conversation metadata and active sessions | `user_id`, `updated_at` |
+| `messages` | Chat messages and SSE generation status | `conversation_id`, `created_at` |
+| `projects` | Registered workspaces and tech stack info | `name`, `path` |
+| `tasks` | Autonomous multi-step agent tasks | `status`, `created_at` |
+| `agent_runs` | Individual step executions and observations | `task_id`, `step_id` |
+| `tool_executions` | Tool invocation telemetry and durations | `tool_name`, `timestamp` |
+| `memories` | Long-term persistent memories (Phase 7) | `category`, `project_id`, `status` |
+| `model_configs` | Model registry settings and parameters | `role`, `model_name` |
+| `model_metrics` | Inference latency and token throughput | `model_name`, `timestamp` |
+| `workspace_files` | Workspace file tree and hash cache | `workspace_path`, `file_path` |
+| `code_chunks` | Parsed AST and syntax blocks | `file_path`, `chunk_id` |
+| `permissions` | Tool permission registry entries | `tool_name`, `permission_level` |
+| `audit_logs` | Security events and approval audit trails | `event_type`, `timestamp` |
+| `settings` | DODO system configuration settings | `key` (unique) |
 
 ---
 
-## 2. Resilience and Storage Strategy
+## Safe Database Migration to MongoDB
 
-1. **Source Code Separation**: Full project source trees are never stored as monolithic blobs in MongoDB. Source files reside in the authorized filesystem (`workspace/`), while MongoDB indexes hashes, metadata, and chunk summaries.
-2. **Offline Fallback Resilience**: When an external MongoDB server is not active during developer bootstrap, DODO automatically switches to an in-process document store (`mongomock` with disk persistence at `data/local_db_store.json`). All health endpoints report actual connectivity without throwing unhandled exceptions.
-3. **Semantic Memory**: Employs MongoDB text indexing and vector embeddings. If MongoDB Atlas Vector Search is enabled, vector embeddings are queried; otherwise, high-performance in-memory semantic scoring is utilized.
+DODO includes a safe database migration engine (`backend/app/database/migration.py` and `scripts/migrate_to_mongodb.py`).
 
+### Key Safety Guarantees:
+1. **Non-destructive**: Uses `$setOnInsert` so existing MongoDB documents are never overwritten or deleted.
+2. **Dry-Run by Default**: Audits and previews all records before writing.
+3. **Connection Verification**: Strictly tests target database connectivity and ping before attempting migration.
+
+### Running Migration CLI:
+
+#### Step 1: Preview with Dry Run
+```powershell
+$env:PYTHONPATH = "D:\DODO"
+python scripts/migrate_to_mongodb.py
+```
+Output audits all records present in `local_db_store.json`:
+```text
+[Source JSON File]: D:\DODO\data\local_db_store.json
+[Total Records in Fallback]: 450
+  - conversations: 33 records
+  - messages: 155 records
+  - tasks: 36 records
+  - tool_executions: 142 records
+  - model_configs: 5 records
+  - model_metrics: 15 records
+  - audit_logs: 64 records
+```
+
+#### Step 2: Apply Migration to Local or Atlas MongoDB
+```powershell
+# For local MongoDB:
+python scripts/migrate_to_mongodb.py --uri "mongodb://localhost:27017" --apply
+
+# For MongoDB Atlas (requires approved connection string in .env):
+python scripts/migrate_to_mongodb.py --uri "mongodb+srv://user:password@cluster.mongodb.net" --apply
+```
