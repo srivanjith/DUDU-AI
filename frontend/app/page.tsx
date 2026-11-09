@@ -37,6 +37,7 @@ export default function Home() {
 
   // Streaming State
   const [isStreaming, setIsStreaming] = useState(false);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
 
   // Autonomous Tasks State
   const [tasks, setTasks] = useState<AgentTask[]>([]);
@@ -147,6 +148,9 @@ export default function Home() {
     setMessages((prev) => [...prev, assistantMsg]);
     setIsStreaming(true);
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     streamChatMessage(
       currentConvId,
       content,
@@ -167,12 +171,34 @@ export default function Home() {
       },
       () => {
         setIsStreaming(false);
+        abortControllerRef.current = null;
       },
       (err) => {
         console.error("Stream error", err);
+        setMessages((prev) => {
+          const updated = [...prev];
+          const lastIdx = updated.length - 1;
+          if (lastIdx >= 0) {
+            updated[lastIdx] = {
+              ...updated[lastIdx],
+              content: `⚠️ ${err}`,
+            };
+          }
+          return updated;
+        });
         setIsStreaming(false);
-      }
+        abortControllerRef.current = null;
+      },
+      controller.signal
     );
+  };
+
+  const handleStopStreaming = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsStreaming(false);
   };
 
   const handleCreateTask = async (prompt: string) => {
@@ -276,10 +302,11 @@ export default function Home() {
             messages={messages}
             onSendMessage={handleSendMessage}
             isStreaming={isStreaming}
-            onStopStreaming={() => setIsStreaming(false)}
+            onStopStreaming={handleStopStreaming}
             selectedModel={selectedModel}
             onSelectModel={setSelectedModel}
             availableModels={availableModels}
+            ollamaStatus={health?.inference_engine}
           />
         )}
 

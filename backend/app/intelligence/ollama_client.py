@@ -9,10 +9,22 @@ from backend.app.core.config import settings
 logger = logging.getLogger("dodo.intelligence.ollama")
 
 
+class OllamaServiceError(Exception):
+    """Raised when Ollama server cannot be reached."""
+    pass
+
+
+class ModelNotFoundError(Exception):
+    """Raised when the requested model is not installed locally in Ollama."""
+    pass
+
+
 class OllamaClient:
     """
     Client for interacting with local Ollama inference server.
-    Supports streaming, model discovery, model pull, health checks, and fallback generation.
+    Provides strict health checks, dynamic model discovery, capability inspection,
+    streaming completions, and graceful error handling.
+    Does NOT fabricate model responses.
     """
 
     def __init__(self, base_url: Optional[str] = None):
@@ -20,10 +32,12 @@ class OllamaClient:
         self.timeout = settings.OLLAMA_TIMEOUT_SECONDS
 
     async def check_health(self) -> Dict[str, Any]:
-        """Checks if Ollama is running and responsive."""
+        """Checks if Ollama daemon is running, responsive, and measures latency."""
+        start_time = time.perf_counter()
         try:
             async with httpx.AsyncClient(timeout=2.0) as client:
                 res = await client.get(f"{self.base_url}/api/version")
+                latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
                 if res.status_code == 200:
                     version_info = res.json()
                     models = await self.list_models()
@@ -31,38 +45,67 @@ class OllamaClient:
                         "status": "online",
                         "version": version_info.get("version", "unknown"),
                         "base_url": self.base_url,
+                        "latency_ms": latency_ms,
                         "model_count": len(models),
-                        "models": [m["name"] for m in models],
+                        "models": [m.get("name", "") for m in models],
                     }
         except Exception as e:
-            pass
+            logger.debug(f"Ollama health check failed: {e}")
 
         return {
             "status": "offline",
             "base_url": self.base_url,
-            "error": "Ollama service is not reachable at " + self.base_url,
+            "latency_ms": None,
+            "error": f"Ollama service is not reachable at {self.base_url}. Start it with 'ollama serve'.",
             "model_count": 0,
             "models": [],
         }
 
     async def list_models(self) -> List[Dict[str, Any]]:
-        """Discovers locally installed models in Ollama."""
+        """Discovers locally installed models in Ollama with sizes and metadata."""
         try:
             async with httpx.AsyncClient(timeout=3.0) as client:
                 res = await client.get(f"{self.base_url}/api/tags")
                 if res.status_code == 200:
                     data = res.json()
-                    return data.get("models", [])
+                    raw_models = data.get("models", [])
+                    parsed = []
+                    for m in raw_models:
+                        details = m.get("details", {})
+                        parsed.append({
+                            "name": m.get("name", ""),
+                            "model": m.get("model", ""),
+                            "size": m.get("size", 0),
+                            "size_gb": round(m.get("size", 0) / (1024 ** 3), 2),
+                            "digest": m.get("digest", "")[:12],
+                            "modified_at": m.get("modified_at", ""),
+                            "family": details.get("family", ""),
+                            "parameter_size": details.get("parameter_size", ""),
+                            "quantization_level": details.get("quantization_level", ""),
+                        })
+                    return parsed
         except Exception as e:
             logger.debug(f"Could not reach Ollama at {self.base_url}: {e}")
         return []
 
+    async def show_model(self, model_name: str) -> Optional[Dict[str, Any]]:
+        """Retrieves detailed architecture and template information for a specific model."""
+        try:
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                res = await client.post(f"{self.base_url}/api/show", json={"name": model_name})
+                if res.status_code == 200:
+                    return res.json()
+        except Exception as e:
+            logger.debug(f"Could not inspect model '{model_name}': {e}")
+        return None
+
     async def is_model_available(self, model_name: str) -> bool:
-        """Checks if specific model is downloaded and ready."""
+        """Verifies if the specific model is currently downloaded in local Ollama."""
         models = await self.list_models()
+        target = model_name.strip()
         for m in models:
             name = m.get("name", "")
-            if name == model_name or name.startswith(f"{model_name}:"):
+            if name == target or name.startswith(f"{target}:") or target.startswith(f"{name}:"):
                 return True
         return False
 
@@ -73,90 +116,100 @@ class OllamaClient:
         options: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
-        Streams chat completion tokens from Ollama.
-        If Ollama is offline or model is missing, yields an intelligent native fallback response.
+        Streams chat tokens from Ollama.
+        Does NOT fake AI responses. If Ollama is offline or model is missing,
+        yields clear structured error events.
         """
-        is_online = (await self.check_health())["status"] == "online"
-
-        if is_online:
-            try:
-                payload = {
-                    "model": model,
-                    "messages": messages,
-                    "stream": True,
-                    "options": options or {"temperature": 0.3, "num_ctx": 8192},
-                }
-                async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    async with client.stream(
-                        "POST",
-                        f"{self.base_url}/api/chat",
-                        json=payload,
-                    ) as response:
-                        if response.status_code == 200:
-                            async for line in response.aiter_lines():
-                                if line:
-                                    try:
-                                        chunk = json.loads(line)
-                                        content = chunk.get("message", {}).get("content", "")
-                                        done = chunk.get("done", False)
-                                        yield {"content": content, "done": done, "model": model}
-                                    except Exception:
-                                        continue
-                            return
-            except Exception as e:
-                logger.warning(f"Error streaming from Ollama: {e}. Switching to native reasoning engine.")
-
-        # Fallback intelligent local generator when Ollama is offline or model isn't downloaded yet
-        last_user_msg = messages[-1]["content"] if messages else ""
-        async for chunk in self._generate_native_fallback(last_user_msg, model):
-            yield chunk
-
-    async def _generate_native_fallback(self, prompt: str, model: str) -> AsyncGenerator[Dict[str, Any], None]:
-        """
-        Provides intelligent direct responses when Ollama daemon is offline or downloading models.
-        Includes code planning, explanations, and instructions on how to start Ollama.
-        """
-        prompt_lower = prompt.lower()
-        if "hello" in prompt_lower or "hi" in prompt_lower:
-            text = (
-                "👋 **Greetings! I am DODO — Your AI, Your Machine, Your Rules.**\n\n"
-                "I am running on your local machine with full privacy and local-first autonomy.\n"
-                "- **Mode A (AI Assistant)**: Ask questions, get explanations, and generate code.\n"
-                "- **Mode B (Autonomous Developer)**: Provide high-level development goals and I will plan, code, test, and verify.\n"
-                "- **Mode C (Computer & Browser Agent)**: Workspace inspection, terminal commands, and Playwright verification.\n\n"
-                f"Currently configured model: `{model}`. How can I assist you today?"
+        health = await self.check_health()
+        if health["status"] != "online":
+            err_msg = (
+                f"Ollama inference daemon is offline at {self.base_url}.\n\n"
+                "To start Ollama locally, run in your terminal:\n"
+                "```powershell\n"
+                "ollama serve\n"
+                "```"
             )
-        elif "e-commerce" in prompt_lower or "task management" in prompt_lower or "build" in prompt_lower or "create" in prompt_lower:
-            text = (
-                "### 🦅 DODO Autonomous Developer Plan\n\n"
-                "I have analyzed your objective: **\"" + prompt + "\"**\n\n"
-                "#### Architectural Breakdown:\n"
-                "1. **Backend**: FastAPI with async REST routes and Pydantic schemas.\n"
-                "2. **Database**: MongoDB collection persistence with connection resilience.\n"
-                "3. **Frontend**: Modern responsive React/Next.js interface with real-time feedback.\n"
-                "4. **Verification**: Playwright browser automation and automated unit tests.\n\n"
-                "Ready to proceed with workspace file creation and validation."
-            )
-        else:
-            text = (
-                f"**DODO Intelligence Engine** received your request:\n\n"
-                f"> {prompt}\n\n"
-                f"I am actively operating in local-first mode. All computations, file operations, and project states are securely confined to your machine.\n\n"
-                f"If you wish to run large open-weight foundation models directly through Ollama, ensure `ollama serve` is active and run `ollama run {model}`."
-            )
-
-        # Stream words smoothly
-        words = text.split(" ")
-        for i, word in enumerate(words):
             yield {
-                "content": word + (" " if i < len(words) - 1 else ""),
-                "done": False,
-                "model": f"{model} (native-engine)",
+                "error": err_msg,
+                "error_code": "OLLAMA_OFFLINE",
+                "done": True,
+                "model": model,
             }
-            await asyncio.sleep(0.015)
+            return
 
-        yield {"content": "", "done": True, "model": f"{model} (native-engine)"}
+        # Check if the requested model is actually installed
+        available = await self.is_model_available(model)
+        if not available:
+            installed = await self.list_models()
+            installed_names = [m["name"] for m in installed]
+            err_msg = (
+                f"Model `{model}` is not installed in local Ollama.\n\n"
+                f"Currently installed models: {installed_names if installed_names else 'None'}\n\n"
+                "To download this model, run with approval in your terminal:\n"
+                f"```powershell\nollama pull {model}\n```"
+            )
+            yield {
+                "error": err_msg,
+                "error_code": "MODEL_NOT_FOUND",
+                "done": True,
+                "model": model,
+            }
+            return
+
+        payload = {
+            "model": model,
+            "messages": messages,
+            "stream": True,
+            "options": options or {"temperature": 0.3, "num_ctx": 4096},
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                async with client.stream(
+                    "POST",
+                    f"{self.base_url}/api/chat",
+                    json=payload,
+                ) as response:
+                    if response.status_code != 200:
+                        err_text = await response.aread()
+                        yield {
+                            "error": f"Ollama HTTP {response.status_code}: {err_text.decode('utf-8', errors='replace')}",
+                            "error_code": "OLLAMA_HTTP_ERROR",
+                            "done": True,
+                            "model": model,
+                        }
+                        return
+
+                    async for line in response.aiter_lines():
+                        if line:
+                            try:
+                                chunk = json.loads(line)
+                                content = chunk.get("message", {}).get("content", "")
+                                done = chunk.get("done", False)
+                                yield {
+                                    "content": content,
+                                    "done": done,
+                                    "model": model,
+                                    "total_duration": chunk.get("total_duration"),
+                                    "eval_count": chunk.get("eval_count"),
+                                    "eval_duration": chunk.get("eval_duration"),
+                                }
+                            except Exception:
+                                continue
+        except httpx.TimeoutException:
+            yield {
+                "error": f"Inference timed out after {self.timeout} seconds.",
+                "error_code": "INFERENCE_TIMEOUT",
+                "done": True,
+                "model": model,
+            }
+        except Exception as e:
+            yield {
+                "error": f"Ollama connection error during inference: {str(e)}",
+                "error_code": "CONNECTION_ERROR",
+                "done": True,
+                "model": model,
+            }
 
 
 ollama_client = OllamaClient()
-

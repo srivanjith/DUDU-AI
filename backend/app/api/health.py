@@ -7,10 +7,11 @@ from backend.app.core.config import settings
 from backend.app.database.mongodb import db_manager
 from backend.app.intelligence.ollama_client import ollama_client
 
-router = APIRouter(prefix="/health", tags=["Health"])
+router = APIRouter(tags=["Health"])
 
 
-@router.get("")
+@router.get("/health")
+@router.get("/api/health")
 async def get_system_health() -> Dict[str, Any]:
     """Returns actual operational health of all DODO subsystems."""
     db_health = db_manager.check_health()

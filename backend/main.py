@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.core.config import settings
 from backend.app.database.mongodb import db_manager
 from backend.app.database.indexes import create_database_indexes
-from backend.app.api import health, conversations, tasks, models, workspace, terminal, browser, memory
+from backend.app.api import health, conversations, tasks, models, workspace, terminal, browser, memory, chat
 
 logging.basicConfig(
     level=logging.INFO,
@@ -49,6 +49,7 @@ app.add_middleware(
 
 # Mount Routers
 app.include_router(health.router)
+app.include_router(chat.router)
 app.include_router(conversations.router)
 app.include_router(tasks.router)
 app.include_router(models.router)

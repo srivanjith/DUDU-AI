@@ -1,17 +1,17 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export async function fetchHealth() {
-  const res = await fetch(`${API_BASE}/health`);
+  const res = await fetch(`${API_BASE}/api/health`);
   return res.json();
 }
 
-export async function fetchConversations() {
-  const res = await fetch(`${API_BASE}/conversations`);
+export async function fetchConversations(skip = 0, limit = 50) {
+  const res = await fetch(`${API_BASE}/api/conversations?skip=${skip}&limit=${limit}`);
   return res.json();
 }
 
 export async function createConversation(title: string, mode: string = "assistant") {
-  const res = await fetch(`${API_BASE}/conversations`, {
+  const res = await fetch(`${API_BASE}/api/conversations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, mode }),
@@ -19,13 +19,32 @@ export async function createConversation(title: string, mode: string = "assistan
   return res.json();
 }
 
-export async function fetchConversation(id: string) {
-  const res = await fetch(`${API_BASE}/conversations/${id}`);
+export async function fetchConversation(id: string, skip = 0, limit = 100) {
+  const res = await fetch(`${API_BASE}/api/conversations/${id}?skip=${skip}&limit=${limit}`);
   return res.json();
 }
 
 export async function deleteConversation(id: string) {
-  const res = await fetch(`${API_BASE}/conversations/${id}`, { method: "DELETE" });
+  const res = await fetch(`${API_BASE}/api/conversations/${id}`, { method: "DELETE" });
+  return res.json();
+}
+
+export async function fetchModels() {
+  const res = await fetch(`${API_BASE}/api/models`);
+  return res.json();
+}
+
+export async function fetchModelsStatus() {
+  const res = await fetch(`${API_BASE}/api/models/status`);
+  return res.json();
+}
+
+export async function setModelRole(role: string, model_name: string) {
+  const res = await fetch(`${API_BASE}/api/models/roles`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role, model_name }),
+  });
   return res.json();
 }
 
@@ -81,58 +100,81 @@ export async function executeTerminalCommand(command: string) {
   return res.json();
 }
 
-export async function fetchModels() {
-  const res = await fetch(`${API_BASE}/models`);
-  return res.json();
-}
-
 export function streamChatMessage(
   conversationId: string,
   content: string,
   model: string,
   onToken: (token: string, model: string) => void,
   onComplete: () => void,
-  onError: (err: any) => void
+  onError: (err: any) => void,
+  signal?: AbortSignal
 ) {
-  fetch(`${API_BASE}/conversations/${conversationId}/messages`, {
+  fetch(`${API_BASE}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content, model }),
+    body: JSON.stringify({
+      conversation_id: conversationId,
+      message: content,
+      model: model,
+    }),
+    signal,
   })
     .then(async (response) => {
-      if (!response.body) return;
+      if (!response.ok) {
+        const errorText = await response.text();
+        onError(errorText || `HTTP ${response.status}`);
+        return;
+      }
+      if (!response.body) {
+        onComplete();
+        return;
+      }
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop() || "";
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n\n");
+          buffer = lines.pop() || "";
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const data = JSON.parse(line.substring(6));
-              if (data.token) {
-                onToken(data.token, data.model);
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.substring(6));
+                if (data.type === "token" && data.token) {
+                  onToken(data.token, data.model || model);
+                } else if (data.type === "error") {
+                  onError(data.error);
+                  return;
+                } else if (data.type === "done") {
+                  onComplete();
+                  return;
+                }
+              } catch (e) {
+                // Ignore json parse error on partial chunks
               }
-              if (data.done) {
-                onComplete();
-                return;
-              }
-            } catch (e) {
-              // ignore parse errors for partial chunks
             }
           }
+        }
+      } catch (err: any) {
+        if (err.name === "AbortError") {
+          console.log("Stream aborted by user");
+        } else {
+          onError(err);
         }
       }
       onComplete();
     })
     .catch((err) => {
-      onError(err);
+      if (err.name === "AbortError") {
+        console.log("Stream aborted by user");
+        onComplete();
+      } else {
+        onError(err);
+      }
     });
 }
-

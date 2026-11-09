@@ -20,6 +20,12 @@ class BaseRepository:
             del d["_id"]
         return d
 
+    def _id_query(self, doc_id: str) -> Dict[str, Any]:
+        """Matches both ObjectId and string representation for robust persistence."""
+        if ObjectId.is_valid(doc_id):
+            return {"$or": [{"_id": ObjectId(doc_id)}, {"_id": str(doc_id)}]}
+        return {"_id": doc_id}
+
     def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
         doc = dict(data)
         if "id" in doc and "_id" not in doc:
@@ -32,11 +38,17 @@ class BaseRepository:
         return self._convert_id(doc)
 
     def find_by_id(self, doc_id: str) -> Optional[Dict[str, Any]]:
-        query = {"_id": ObjectId(doc_id)} if ObjectId.is_valid(doc_id) else {"_id": doc_id}
+        query = self._id_query(doc_id)
         doc = self.collection.find_one(query)
         return self._convert_id(doc)
 
-    def find_all(self, filter_query: Optional[Dict[str, Any]] = None, limit: int = 100, skip: int = 0, sort: Optional[List[tuple]] = None) -> List[Dict[str, Any]]:
+    def find_all(
+        self,
+        filter_query: Optional[Dict[str, Any]] = None,
+        limit: int = 100,
+        skip: int = 0,
+        sort: Optional[List[tuple]] = None,
+    ) -> List[Dict[str, Any]]:
         q = filter_query or {}
         cursor = self.collection.find(q).skip(skip).limit(limit)
         if sort:
@@ -44,14 +56,14 @@ class BaseRepository:
         return [self._convert_id(d) for d in cursor]
 
     def update(self, doc_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        query = {"_id": ObjectId(doc_id)} if ObjectId.is_valid(doc_id) else {"_id": doc_id}
+        query = self._id_query(doc_id)
         self.collection.update_one(query, {"$set": updates})
         if db_manager.is_mock:
             db_manager.persist_fallback_data()
         return self.find_by_id(doc_id)
 
     def delete(self, doc_id: str) -> bool:
-        query = {"_id": ObjectId(doc_id)} if ObjectId.is_valid(doc_id) else {"_id": doc_id}
+        query = self._id_query(doc_id)
         result = self.collection.delete_one(query)
         if db_manager.is_mock:
             db_manager.persist_fallback_data()
@@ -59,4 +71,3 @@ class BaseRepository:
 
     def count(self, filter_query: Optional[Dict[str, Any]] = None) -> int:
         return self.collection.count_documents(filter_query or {})
-

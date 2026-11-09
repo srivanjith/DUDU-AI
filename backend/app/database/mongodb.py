@@ -3,6 +3,7 @@ import logging
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from bson import ObjectId
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from backend.app.core.config import settings
@@ -91,12 +92,15 @@ class MongoDBManager:
             with open(self._fallback_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 for col_name, docs in data.items():
-                    if col_name in self.db.list_collection_names() or col_name in COLLECTIONS:
-                        col = self.db[col_name]
-                        for doc in docs:
-                            # Avoid duplicates
-                            if "_id" in doc and not col.find_one({"_id": doc["_id"]}):
+                    col = self.db[col_name]
+                    for doc in docs:
+                        doc_id = doc.get("_id")
+                        if doc_id:
+                            q = {"$or": [{"_id": ObjectId(doc_id)}, {"_id": str(doc_id)}]} if ObjectId.is_valid(doc_id) else {"_id": doc_id}
+                            if not col.find_one(q):
                                 col.insert_one(doc)
+                        else:
+                            col.insert_one(doc)
         except Exception as e:
             logger.warning(f"Error reading fallback database file: {e}")
 
