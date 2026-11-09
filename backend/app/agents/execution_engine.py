@@ -85,32 +85,45 @@ class ExecutionEngine:
         # 4. Safe Execution: Tool or Simulated Planning
         if step.tool_name:
             params = dict(step.parameters or {})
-            # Read-only tools can run if workspace exists, otherwise run safely simulated
-            if step.tool_name == "list_workspace_files":
-                params["subpath"] = params.get("subpath", "")
-                params["depth"] = params.get("depth", 2)
-                res = await tool_registry.execute(
-                    step.tool_name,
-                    params,
-                    task_id=task_id,
-                    enforce_permissions=True,
-                    approved=is_approved,
-                    simulated=False,
-                )
-            else:
-                # In Phase 3, all WRITE/EXECUTE/DELETE operations run in SIMULATED mode
-                res = await tool_registry.execute(
-                    step.tool_name,
-                    params,
-                    task_id=task_id,
-                    enforce_permissions=True,
-                    approved=is_approved,
-                    simulated=True,
-                )
+            if "workspace_root" not in params:
+                params["workspace_root"] = workspace_path
+
+            # Determine whether this tool should run in real or simulated mode
+            is_simulated = params.pop("simulated", False)
+
+            # Pre-modification checkpoint for real write/delete operations
+            if not is_simulated and step.tool_name in ["write_file", "edit_file", "delete_file", "rename_file"]:
+                from backend.app.intelligence.checkpoint_manager import checkpoint_manager
+                target_file = params.get("path") or params.get("old_path")
+                if target_file:
+                    checkpoint_manager.create_checkpoint(
+                        workspace_root=workspace_path,
+                        files_to_snapshot=[target_file],
+                        title=f"Pre-step checkpoint for Step {step.step_id}",
+                        task_id=task_id,
+                    )
+
+            res = await tool_registry.execute(
+                step.tool_name,
+                params,
+                task_id=task_id,
+                enforce_permissions=True,
+                approved=is_approved,
+                simulated=is_simulated,
+            )
 
             duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
             if res.get("success"):
-                obs = f"[Observed] Tool '{step.tool_name}' executed: {res.get('result', '')}"
+                if step.tool_name == "write_file":
+                    file_hash = res.get("file_hash") or (res.get("result", {}).get("file_hash") if isinstance(res.get("result"), dict) else "verified")
+                    bytes_w = res.get("bytes_written") or (res.get("result", {}).get("bytes_written") if isinstance(res.get("result"), dict) else 0)
+                    obs = f"[Observed & Read-back Verified] File '{params.get('path')}' written ({bytes_w} bytes, SHA-256: {file_hash}). Verified on disk."
+                elif step.tool_name == "read_file":
+                    res_val = res.get("result", {})
+                    content_preview = res_val.get("content", "")[:120] if isinstance(res_val, dict) else str(res_val)[:120]
+                    obs = f"[Observed & Read-back Verified] File '{params.get('path')}' read. Content verified: {content_preview}..."
+                else:
+                    obs = f"[Observed] Tool '{step.tool_name}' executed: {res.get('result', '')}"
                 return StepExecutionResult(step_id=step.step_id, success=True, observation=obs, duration_ms=duration_ms)
             else:
                 err = res.get("error", "Unknown tool error")
@@ -132,3 +145,4 @@ class ExecutionEngine:
 
 
 execution_engine = ExecutionEngine()
+

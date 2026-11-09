@@ -45,3 +45,4 @@ class CancellationToken:
     async def wait_until_cancelled(self):
         """Asynchronously waits until cancellation is triggered."""
         await self._event.wait()
+

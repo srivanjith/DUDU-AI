@@ -195,8 +195,14 @@ export function AgentPanel({
                     </div>
                     <p className="text-xs text-slate-200">{pendingApproval.description}</p>
                     <p className="text-[11px] text-slate-400 mt-1">
-                      Tool: <span className="font-mono text-amber-200">{pendingApproval.tool_name}</span> (Simulated safe Phase 3 operation)
+                      Target File: <span className="font-mono text-amber-200">{pendingApproval.parameters?.path || pendingApproval.tool_name}</span> (Phase 4 Controlled Filesystem Operation with automated checkpoint snapshot)
                     </p>
+                    {pendingApproval.parameters?.content && (
+                      <div className="mt-2 p-2 bg-slate-950 rounded-lg border border-amber-500/20 max-h-36 overflow-y-auto text-[11px] font-mono text-slate-300">
+                        <div className="text-[10px] text-amber-400 font-bold uppercase mb-1">Proposed File Content Preview:</div>
+                        <pre className="whitespace-pre-wrap">{pendingApproval.parameters.content.slice(0, 500)}...</pre>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -225,7 +231,12 @@ export function AgentPanel({
               {/* Task Header & Plan Overview */}
               <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-base font-bold text-white">{activeTask.prompt}</h2>
+                  <div>
+                    <h2 className="text-base font-bold text-white">{activeTask.prompt}</h2>
+                    <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+                      Target Workspace: <span className="text-emerald-400">{activeTask.workspace_path}</span>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-2">
                     <span
                       className={`px-2.5 py-1 text-xs font-semibold rounded-full border capitalize ${

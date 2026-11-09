@@ -110,3 +110,4 @@ class AgentExecutionState(BaseModel):
         self.events.append(evt)
         self.updated_at = datetime.now(timezone.utc).isoformat()
         return evt
+

@@ -91,6 +91,70 @@ export async function approveTaskStep(id: string, stepId: number, approved: bool
   return res.json();
 }
 
+export async function fetchWorkspaces() {
+  const res = await fetch(`${API_BASE}/api/workspaces`);
+  return res.json();
+}
+
+export async function registerWorkspace(name: string, path: string, description: string = "", is_default: boolean = false) {
+  const res = await fetch(`${API_BASE}/api/workspaces`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, path, description, is_default }),
+  });
+  return res.json();
+}
+
+export async function fetchWorkspace(id: string) {
+  const res = await fetch(`${API_BASE}/api/workspaces/${id}`);
+  return res.json();
+}
+
+export async function scanWorkspace(id: string) {
+  const res = await fetch(`${API_BASE}/api/workspaces/${id}/scan`);
+  return res.json();
+}
+
+export async function deleteWorkspace(id: string) {
+  const res = await fetch(`${API_BASE}/api/workspaces/${id}`, { method: "DELETE" });
+  return res.json();
+}
+
+export async function fetchWorkspaceStatus() {
+  const res = await fetch(`${API_BASE}/api/workspace/status`);
+  return res.json();
+}
+
+export async function previewDiff(path: string, proposed_content: string) {
+  const res = await fetch(`${API_BASE}/api/workspace/preview-diff`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path, proposed_content }),
+  });
+  return res.json();
+}
+
+export async function searchWorkspace(query: string, subpath: string = "") {
+  const res = await fetch(`${API_BASE}/api/workspace/search?query=${encodeURIComponent(query)}&subpath=${encodeURIComponent(subpath)}`);
+  return res.json();
+}
+
+export async function fetchCheckpoints(workspacePath?: string) {
+  const url = workspacePath
+    ? `${API_BASE}/api/workspace/checkpoints?workspace_path=${encodeURIComponent(workspacePath)}`
+    : `${API_BASE}/api/workspace/checkpoints`;
+  const res = await fetch(url);
+  return res.json();
+}
+
+export async function rollbackCheckpoint(checkpointId: string, workspacePath?: string) {
+  const url = workspacePath
+    ? `${API_BASE}/api/workspace/checkpoints/${checkpointId}/rollback?workspace_path=${encodeURIComponent(workspacePath)}`
+    : `${API_BASE}/api/workspace/checkpoints/${checkpointId}/rollback`;
+  const res = await fetch(url, { method: "POST" });
+  return res.json();
+}
+
 export async function fetchWorkspaceFiles() {
   const res = await fetch(`${API_BASE}/workspace/files`);
   return res.json();

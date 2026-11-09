@@ -85,6 +85,47 @@ export interface AgentTask {
   updated_at: string;
 }
 
+export interface ProjectScan {
+  workspace_path: string;
+  project_name: string;
+  is_git_repo: boolean;
+  git_branch?: string;
+  git_status?: string;
+  languages: Record<string, number>;
+  primary_language: string;
+  frameworks: string[];
+  package_managers: string[];
+  entry_points: string[];
+  dependencies: string[];
+  config_files: string[];
+  test_files: string[];
+  total_files: number;
+  total_size_bytes: number;
+  source_directories: string[];
+  summary: string;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  path: string;
+  description?: string;
+  is_default: boolean;
+  scan_summary?: ProjectScan;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Checkpoint {
+  id: string;
+  workspace_id: string;
+  task_id?: string;
+  title: string;
+  description?: string;
+  file_count: number;
+  created_at: string;
+}
+
 export interface WorkspaceFile {
   name: string;
   path: string;

@@ -305,3 +305,4 @@ def test_task_persistence_and_recovery():
     assert recovered["id"] == task_id
     assert recovered["plan"]["objective"] == "Verify Persistence"
     print("\n[Test 12 PASSED] Task persistence and restart survival verified.")
+

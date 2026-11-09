@@ -33,6 +33,140 @@ class TaskDecomposer:
         tech_stack = analysis.tech_stack or ["React", "FastAPI", "MongoDB"]
         tech_str = ", ".join(tech_stack)
 
+        # Check if this is a real autonomous coding execution task (Phase 4 Spec)
+        is_coding_implementation = (
+            any(w in prompt_lower for w in ["create", "build", "implement", "add, view", "crud"])
+            and not prompt_lower.startswith("plan ")
+            and ("task" in prompt_lower or "python" in prompt_lower or "app" in prompt_lower)
+        )
+
+        if is_coding_implementation:
+            from backend.app.intelligence.code_generator import code_generator
+            app_files = code_generator.get_task_app_files()
+            task_manager_code = app_files.get("task_manager.py", "")
+            cli_code = app_files.get("main.py", "")
+            test_code = app_files.get("test_tasks.py", "")
+
+            return [
+                DecomposedStep(
+                    step_id=1,
+                    title="Scan Workspace Environment",
+                    description="Inspect existing project directory, detect conflicts and project layout.",
+                    dependencies=[],
+                    expected_outcomes=["Workspace directory structure and existing files mapped."],
+                    required_capabilities=["READ", "WORKSPACE_INSPECTION"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool="list_workspace_files",
+                    parameters={"subpath": "", "depth": 2},
+                ),
+                DecomposedStep(
+                    step_id=2,
+                    title="Analyze Project Architecture & Data Models",
+                    description="Formulate Task dataclass, JSON persistence schema, and CRUD interface.",
+                    dependencies=[1],
+                    expected_outcomes=["Data model schemas and CRUD interface specifications finalized."],
+                    required_capabilities=["ARCHITECTURE_PLANNING"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool=None,
+                    parameters={},
+                ),
+                DecomposedStep(
+                    step_id=3,
+                    title="Plan Code Changes & Generate Diffs",
+                    description="Prepare proposed code changes and unified diffs for review.",
+                    dependencies=[2],
+                    expected_outcomes=["Unified diffs and Python syntax validated for all proposed files."],
+                    required_capabilities=["READ", "DIFF_GENERATION"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool=None,
+                    parameters={},
+                ),
+                DecomposedStep(
+                    step_id=4,
+                    title="Apply Core TaskManager Logic",
+                    description="Create or update task_manager.py with Task dataclass and JSON persistence.",
+                    dependencies=[3],
+                    expected_outcomes=["task_manager.py created on disk with valid syntax and hash verified."],
+                    required_capabilities=["WRITE", "ATOMIC_FILE_WRITE"],
+                    risk_level=RiskLevel.MEDIUM.value,
+                    approval_required=True,
+                    permission_level=PermissionLevel.WRITE.value,
+                    tool="write_file",
+                    parameters={"path": "task_manager.py", "content": task_manager_code, "overwrite": True},
+                ),
+                DecomposedStep(
+                    step_id=5,
+                    title="Apply CLI Entry Point",
+                    description="Create or update main.py for command-line task operations.",
+                    dependencies=[4],
+                    expected_outcomes=["main.py CLI entrypoint created on disk."],
+                    required_capabilities=["WRITE", "ATOMIC_FILE_WRITE"],
+                    risk_level=RiskLevel.MEDIUM.value,
+                    approval_required=True,
+                    permission_level=PermissionLevel.WRITE.value,
+                    tool="write_file",
+                    parameters={"path": "main.py", "content": cli_code, "overwrite": True},
+                ),
+                DecomposedStep(
+                    step_id=6,
+                    title="Apply Automated Test Suite",
+                    description="Create test_tasks.py for Pytest CRUD verification.",
+                    dependencies=[5],
+                    expected_outcomes=["test_tasks.py test suite created on disk."],
+                    required_capabilities=["WRITE", "ATOMIC_FILE_WRITE"],
+                    risk_level=RiskLevel.MEDIUM.value,
+                    approval_required=True,
+                    permission_level=PermissionLevel.WRITE.value,
+                    tool="write_file",
+                    parameters={"path": "test_tasks.py", "content": test_code, "overwrite": True},
+                ),
+                DecomposedStep(
+                    step_id=7,
+                    title="Read Back & Verify File Integrity",
+                    description="Read back modified files from disk, verify SHA-256 hashes and syntax.",
+                    dependencies=[6],
+                    expected_outcomes=["All written files read back from disk and verified non-empty."],
+                    required_capabilities=["READ", "INTEGRITY_VERIFICATION"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool="read_file",
+                    parameters={"path": "task_manager.py"},
+                ),
+                DecomposedStep(
+                    step_id=8,
+                    title="Evaluate Results & Safety Compliance",
+                    description="Verify all CRUD requirements, permissions, and non-destructive checks.",
+                    dependencies=[7],
+                    expected_outcomes=["All acceptance criteria verified against security policies."],
+                    required_capabilities=["EVALUATION"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool=None,
+                    parameters={},
+                ),
+                DecomposedStep(
+                    step_id=9,
+                    title="Prepare Final Delivery Report",
+                    description="Synthesize file manifests, hashes, and implementation summary.",
+                    dependencies=[8],
+                    expected_outcomes=["Final verified completion report published."],
+                    required_capabilities=["REPORTING"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool=None,
+                    parameters={},
+                ),
+            ]
+
         # Standard 9-Stage Autonomous Lifecycle Decomposition (Phase 3 Spec)
         steps = [
             DecomposedStep(

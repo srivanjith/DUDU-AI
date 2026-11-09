@@ -136,3 +136,4 @@ class RequestAnalyzer:
 
 
 request_analyzer = RequestAnalyzer()
+
