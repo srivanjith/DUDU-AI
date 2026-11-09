@@ -140,6 +140,17 @@ class ExecutionEngine:
                     stdout_str = res.get("stdout") or (res.get("result", {}).get("stdout", "") if isinstance(res.get("result"), dict) else "")
                     stdout_preview = stdout_str.strip().replace("\r", "")
                     obs = f"[Real Terminal Output Observed] Exit code: {exit_code}.\nOutput preview:\n{stdout_preview[:350]}"
+                elif step.tool_name == "browser_navigate":
+                    obs = f"[Real Browser Navigated] URL: {res.get('url')} | Title: '{res.get('title')}' | Status: {res.get('status_code')}"
+                elif step.tool_name == "browser_inspect_dom":
+                    dom = res.get("dom", {}) or {}
+                    children_count = len(dom.get("children", [])) if isinstance(dom, dict) else 0
+                    obs = f"[Real Browser DOM Inspected] Successfully mapped element tree. Root element: <{dom.get('tag', 'body')}> with {children_count} child nodes."
+                elif step.tool_name in ["browser_click", "browser_fill", "browser_select", "browser_scroll"]:
+                    obs = f"[Real Browser Interaction Observed] Executed '{step.tool_name}' on selector '{params.get('selector', '')}'. Success: True."
+                elif step.tool_name == "browser_screenshot":
+                    saved_to = res.get("saved_path") or "in-memory base64 preview"
+                    obs = f"[Real Browser Screenshot Captured] Render verified ({res.get('bytes_length', 0)} bytes). Saved to: {saved_to}."
                 else:
                     obs = f"[Observed] Tool '{step.tool_name}' executed: {res.get('result', '')}"
                 return StepExecutionResult(step_id=step.step_id, success=True, observation=obs, duration_ms=duration_ms)

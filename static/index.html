@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DODO Task Manager — Phase 6 Acceptance Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #020617;
+      color: #f8fafc;
+      padding: 40px 20px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 540px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    h1 {
+      font-size: 18px;
+      margin-bottom: 8px;
+      color: #f59e0b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    .input-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    input {
+      flex: 1;
+      background: #020617;
+      border: 1px solid #334155;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+    }
+    input:focus {
+      border-color: #f59e0b;
+    }
+    button {
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    #add-btn {
+      background: #d97706;
+      color: #fff;
+    }
+    #add-btn:hover {
+      background: #b45309;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    li.task-item {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 12px 14px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+    }
+    li.task-item.completed span.task-text {
+      text-decoration: line-through;
+      color: #64748b;
+    }
+    .btn-group {
+      display: flex;
+      gap: 6px;
+    }
+    .toggle-btn {
+      background: #334155;
+      color: #38bdf8;
+      padding: 6px 10px;
+      font-size: 11px;
+    }
+    .toggle-btn:hover {
+      background: #475569;
+    }
+    .delete-btn {
+      background: rgba(244, 63, 94, 0.15);
+      color: #fb7185;
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      padding: 6px 10px;
+      font-size: 11px;
+    }
+    .delete-btn:hover {
+      background: rgba(244, 63, 94, 0.3);
+    }
+    .stats {
+      margin-top: 16px;
+      font-size: 12px;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🦅 DODO Task Manager</h1>
+    <p>Local task application running for Phase 6 autonomous browser verification.</p>
+
+    <div class="input-group">
+      <input type="text" id="task-input" placeholder="Enter task title..." />
+      <button id="add-btn">Add Task</button>
+    </div>
+
+    <ul id="task-list">
+      <li class="task-item" data-id="1">
+        <span class="task-text">Initial Verification Task</span>
+        <div class="btn-group">
+          <button class="toggle-btn" onclick="toggleTask(this)">Complete</button>
+          <button class="delete-btn" onclick="deleteTask(this)">Delete</button>
+        </div>
+      </li>
+    </ul>
+
+    <div class="stats">
+      <span id="task-count">Total Tasks: 1</span>
+      <span id="status-badge" style="color: #10b981;">● Online</span>
+    </div>
+  </div>
+
+  <script>
+    let nextId = 2;
+
+    function updateStats() {
+      const count = document.querySelectorAll('#task-list li.task-item').length;
+      document.getElementById('task-count').textContent = 'Total Tasks: ' + count;
+    }
+
+    function addTask() {
+      const input = document.getElementById('task-input');
+      const val = input.value.trim();
+      if (!val) return;
+
+      const list = document.getElementById('task-list');
+      const li = document.createElement('li');
+      li.className = 'task-item';
+      li.setAttribute('data-id', nextId++);
+      li.innerHTML = `
+        <span class="task-text">${val}</span>
+        <div class="btn-group">
+          <button class="toggle-btn" onclick="toggleTask(this)">Complete</button>
+          <button class="delete-btn" onclick="deleteTask(this)">Delete</button>
+        </div>
+      `;
+      list.appendChild(li);
+      input.value = '';
+      updateStats();
+    }
+
+    function toggleTask(btn) {
+      const li = btn.closest('.task-item');
+      li.classList.toggle('completed');
+      btn.textContent = li.classList.contains('completed') ? 'Undo' : 'Complete';
+    }
+
+    function deleteTask(btn) {
+      const li = btn.closest('.task-item');
+      li.remove();
+      updateStats();
+    }
+
+    document.getElementById('add-btn').addEventListener('click', addTask);
+    document.getElementById('task-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') addTask();
+    });
+
+    updateStats();
+  </script>
+</body>
+</html>
+

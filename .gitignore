@@ -60,6 +60,7 @@ playwright-report/
 # DODO Runtime artifacts
 dodo_workspaces/
 local_workspace/
+workspace/
 logs/
 *.log
 

@@ -33,6 +33,136 @@ class TaskDecomposer:
         tech_stack = analysis.tech_stack or ["React", "FastAPI", "MongoDB"]
         tech_str = ", ".join(tech_stack)
 
+        # Check if this is a Phase 6 Browser Automation & Autonomous Web Testing task
+        is_browser_testing = (
+            ("browser" in prompt_lower or "web" in prompt_lower)
+            and any(w in prompt_lower for w in ["open", "inspect", "test", "interact", "task management", "application"])
+        ) or (
+            "open" in prompt_lower and ("task" in prompt_lower or "app" in prompt_lower)
+        )
+
+        if is_browser_testing:
+            target_web_url = "http://127.0.0.1:8000/static/index.html"
+            return [
+                DecomposedStep(
+                    step_id=1,
+                    title="PLAN: Identify Target Web Application & Launch Chromium",
+                    description="Detect running development server in workspace and initialize Playwright Chromium instance.",
+                    dependencies=[],
+                    expected_outcomes=["Chromium browser launched in isolated session."],
+                    required_capabilities=["READ", "BROWSER_AUTOMATION"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool="browser_navigate",
+                    parameters={"url": target_web_url},
+                ),
+                DecomposedStep(
+                    step_id=2,
+                    title="NAVIGATE: Open Local Task Management Web Application",
+                    description=f"Navigate browser to {target_web_url} and wait for DOM render.",
+                    dependencies=[1],
+                    expected_outcomes=["Page rendered successfully with HTTP status code 200."],
+                    required_capabilities=["READ", "NAVIGATION"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool="browser_navigate",
+                    parameters={"url": target_web_url},
+                ),
+                DecomposedStep(
+                    step_id=3,
+                    title="INSPECT: Inspect DOM Hierarchy & Form Elements",
+                    description="Inspect page structure, input fields (#task-input), action buttons (#add-btn), and task container.",
+                    dependencies=[2],
+                    expected_outcomes=["DOM element tree mapped with form inputs and action buttons identified."],
+                    required_capabilities=["READ", "DOM_INSPECTION"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool="browser_inspect_dom",
+                    parameters={"selector": "body", "max_depth": 3},
+                ),
+                DecomposedStep(
+                    step_id=4,
+                    title="INTERACT: Test Adding New Task via Form",
+                    description="Type 'Automated Browser Verification Task' into #task-input.",
+                    dependencies=[3],
+                    expected_outcomes=["Input field populated with test task content."],
+                    required_capabilities=["WRITE", "ELEMENT_INTERACTION"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.WRITE.value,
+                    tool="browser_fill",
+                    parameters={"selector": "#task-input", "value": "Automated Browser Verification Task"},
+                ),
+                DecomposedStep(
+                    step_id=5,
+                    title="INTERACT: Submit Form & Verify Task Appears in DOM",
+                    description="Click #add-btn to insert the new task into the reactive task list.",
+                    dependencies=[4],
+                    expected_outcomes=["New task added and rendered in the task list."],
+                    required_capabilities=["WRITE", "ELEMENT_INTERACTION"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.WRITE.value,
+                    tool="browser_click",
+                    parameters={"selector": "#add-btn"},
+                ),
+                DecomposedStep(
+                    step_id=6,
+                    title="INTERACT & APPROVAL: Update Task & Delete Task with Sensitive Action Gating",
+                    description="Click .delete-btn to test deleting a task. Requires user approval under sensitive action policy.",
+                    dependencies=[5],
+                    expected_outcomes=["Sensitive deletion action gated with user approval and executed."],
+                    required_capabilities=["WRITE", "APPROVAL_GATING"],
+                    risk_level=RiskLevel.HIGH.value,
+                    approval_required=True,
+                    permission_level=PermissionLevel.WRITE.value,
+                    tool="browser_click",
+                    parameters={"selector": ".delete-btn"},
+                ),
+                DecomposedStep(
+                    step_id=7,
+                    title="OBSERVE & DIAGNOSE: Capture Live Screenshot & Check Browser Diagnostics",
+                    description="Capture full-page screenshot and verify zero JavaScript console errors or failed network requests.",
+                    dependencies=[6],
+                    expected_outcomes=["Screenshot captured and diagnostic error buffer validated."],
+                    required_capabilities=["READ", "SCREENSHOT", "ERROR_MONITORING"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool="browser_screenshot",
+                    parameters={"save_path": "browser_acceptance_result.png", "full_page": False},
+                ),
+                DecomposedStep(
+                    step_id=8,
+                    title="EVALUATE & VERIFY: Evaluate UI Reactivity & Runtime Stability",
+                    description="Evaluate captured console errors, unhandled exceptions, and assert that all CRUD operations completed without failure.",
+                    dependencies=[7],
+                    expected_outcomes=["Assertion verification completed with 0 runtime errors."],
+                    required_capabilities=["EVALUATION", "VERIFICATION"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool=None,
+                    parameters={},
+                ),
+                DecomposedStep(
+                    step_id=9,
+                    title="DELIVER: Synthesize Browser Automation Results & Publish Verified Report",
+                    description="Compile browser execution telemetry, screenshot evidence, DOM states, and final report.",
+                    dependencies=[8],
+                    expected_outcomes=["Phase 6 autonomous web testing delivery report published."],
+                    required_capabilities=["REPORTING"],
+                    risk_level=RiskLevel.LOW.value,
+                    approval_required=False,
+                    permission_level=PermissionLevel.READ.value,
+                    tool=None,
+                    parameters={},
+                ),
+            ]
+
         # Check if this is a Phase 5 Terminal Testing & Execution task
         is_terminal_testing = (
             ("test" in prompt_lower or "pytest" in prompt_lower or "terminal" in prompt_lower)

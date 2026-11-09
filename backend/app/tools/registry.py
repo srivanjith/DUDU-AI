@@ -164,6 +164,10 @@ class ToolRegistry:
         if tool_name == "execute_terminal_command":
             return True, None
 
+        # Browser tools handle URL validation & sensitive action gating internally via BrowserSecurityPolicy
+        if tool_name.startswith("browser_"):
+            return True, None
+
         # Check explicit approval
         if approved:
             return True, None
@@ -225,13 +229,20 @@ class ToolRegistry:
         # 3. Real Tool Execution
         start_time = time.perf_counter()
         try:
-            if "approved" in inspect.signature(func).parameters and "approved" not in parameters:
-                parameters["approved"] = approved
+            sig = inspect.signature(func)
+            has_var_keyword = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+            filtered_params = {}
+            for k, v in parameters.items():
+                if has_var_keyword or k in sig.parameters:
+                    filtered_params[k] = v
+
+            if "approved" in sig.parameters and "approved" not in filtered_params:
+                filtered_params["approved"] = approved
 
             if inspect.iscoroutinefunction(func):
-                result = await func(**parameters)
+                result = await func(**filtered_params)
             else:
-                result = func(**parameters)
+                result = func(**filtered_params)
 
             duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
             self.exec_repo.log_execution(

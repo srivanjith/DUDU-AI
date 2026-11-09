@@ -10,6 +10,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from backend.app.core.config import settings
 from backend.app.database.mongodb import db_manager
 from backend.app.database.indexes import create_database_indexes
@@ -64,6 +65,12 @@ app.include_router(workspace.router)
 app.include_router(terminal.router)
 app.include_router(browser.router)
 app.include_router(memory.router)
+
+# Mount Static Files for Local App Testing
+static_dir = _PROJECT_ROOT / "static"
+static_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
 
 
 @app.get("/")
