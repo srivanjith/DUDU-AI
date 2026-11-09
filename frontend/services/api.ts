@@ -316,3 +316,87 @@ export function streamChatMessage(
       }
     });
 }
+
+// ==============================================================================
+// Memory Center API Services (Phase 7)
+// ==============================================================================
+
+export async function fetchMemories(category?: string, projectId?: string, q?: string, limit = 50) {
+  const params = new URLSearchParams();
+  if (category) params.append("category", category);
+  if (projectId) params.append("project_id", projectId);
+  if (q) params.append("q", q);
+  params.append("limit", limit.toString());
+  const res = await fetch(`${API_BASE}/api/memory?${params.toString()}`);
+  return res.json();
+}
+
+export async function fetchMemoryCategories() {
+  const res = await fetch(`${API_BASE}/api/memory/categories`);
+  return res.json();
+}
+
+export async function fetchMemoryProjects() {
+  const res = await fetch(`${API_BASE}/api/memory/projects`);
+  return res.json();
+}
+
+export async function createMemory(data: {
+  content: string;
+  category?: string;
+  project_id?: string;
+  importance?: number;
+  tags?: string[];
+}) {
+  const res = await fetch(`${API_BASE}/api/memory`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function updateMemory(id: string, data: {
+  content?: string;
+  category?: string;
+  project_id?: string;
+  importance?: number;
+  tags?: string[];
+}) {
+  const res = await fetch(`${API_BASE}/api/memory/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export async function deleteMemory(id: string) {
+  const res = await fetch(`${API_BASE}/api/memory/${id}`, {
+    method: "DELETE",
+  });
+  return res.json();
+}
+
+export async function clearProjectMemories(projectId: string) {
+  const res = await fetch(`${API_BASE}/api/memory/project/${projectId}`, {
+    method: "DELETE",
+  });
+  return res.json();
+}
+
+export async function clearAllMemories() {
+  const res = await fetch(`${API_BASE}/api/memory/clear?confirm=true`, {
+    method: "DELETE",
+  });
+  return res.json();
+}
+
+export async function searchMemories(query: string, category?: string, projectId?: string) {
+  const res = await fetch(`${API_BASE}/api/memory/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, category, project_id: projectId }),
+  });
+  return res.json();
+}

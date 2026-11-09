@@ -7,6 +7,7 @@ import { AgentPanel } from "@/components/AgentPanel";
 import { WorkspaceEditor } from "@/components/WorkspaceEditor";
 import { TerminalPanel } from "@/components/TerminalPanel";
 import { BrowserPreview } from "@/components/BrowserPreview";
+import { MemoryCenter } from "@/components/MemoryCenter";
 import { ModelManager } from "@/components/ModelManager";
 import { SettingsModal } from "@/components/SettingsModal";
 import { Conversation, Message, AgentTask, SystemHealth } from "@/types";
@@ -29,7 +30,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [activeTab, setActiveTab] = useState<
-    "chat" | "developer" | "editor" | "terminal" | "browser" | "models" | "settings"
+    "chat" | "developer" | "editor" | "terminal" | "browser" | "memory" | "models" | "settings"
   >("chat");
 
   // Models
@@ -416,6 +417,7 @@ export default function Home() {
         {activeTab === "editor" && <WorkspaceEditor />}
         {activeTab === "terminal" && <TerminalPanel />}
         {activeTab === "browser" && <BrowserPreview />}
+        {activeTab === "memory" && <MemoryCenter />}
         {activeTab === "models" && <ModelManager />}
         {activeTab === "settings" && <SettingsModal health={health} />}
       </main>

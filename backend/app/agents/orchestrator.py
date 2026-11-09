@@ -358,6 +358,21 @@ class AgentOrchestrator:
                 summary=report,
                 verified=state.verification_passed,
             )
+            # Record task outcome into persistent task & experience memory
+            try:
+                from backend.app.memory.manager import memory_manager
+                workspace_val = task.get("workspace_path", "")
+                proj_name = Path(workspace_val).name if workspace_val else None
+                memory_manager.record_task_experience(
+                    task_id=task_id,
+                    prompt=state.user_request,
+                    outcome_summary=report[:200],
+                    verified=state.verification_passed,
+                    project_id=proj_name,
+                )
+            except Exception as mem_ex:
+                logger.warning(f"Could not record task memory: {mem_ex}")
+
             # Persist events timeline
             self.task_repo.update(task_id, {"events": [e.model_dump() for e in state.events]})
             state.record_event("delivery", "Task completion report published.")

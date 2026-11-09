@@ -55,7 +55,7 @@ class ContextManager:
         max_tokens: Optional[int] = None,
     ) -> str:
         """
-        Assembles a bounded context string for task planning.
+        Assembles a bounded context string for task planning with injected long-term memory.
         """
         target_budget = max_tokens or self.MAX_CONTEXT_TOKENS
         workspace = Path(workspace_path or settings.AUTHORIZED_WORKSPACE_DIR).resolve()
@@ -64,6 +64,19 @@ class ContextManager:
             f"SYSTEM: DODO Local Autonomous Engine. Workspace authorized: {workspace.name}",
             f"USER_REQUEST: {self.sanitize_input(prompt)}",
         ]
+
+        # Retrieve and inject relevant long-term memories
+        try:
+            from backend.app.memory.manager import memory_manager
+            mem_text, _ = memory_manager.build_memory_prompt_injection(
+                query=prompt,
+                project_id=workspace.name,
+                max_tokens=300,
+            )
+            if mem_text:
+                parts.append(mem_text)
+        except Exception:
+            pass
 
         if recent_history:
             history_lines = []

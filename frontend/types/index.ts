@@ -216,3 +216,21 @@ export interface TerminalExecutionResult {
   risk_level?: string;
 }
 
+export interface MemoryRecord {
+  id: string;
+  content: string;
+  category: "conversation" | "preference" | "project" | "task_experience" | "knowledge";
+  project_id?: string | null;
+  conversation_id?: string | null;
+  importance: number;
+  tags: string[];
+  source?: string;
+  is_verified: boolean;
+  metadata?: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+  relevance_score?: number;
+  match_reasons?: string[];
+}
+
+

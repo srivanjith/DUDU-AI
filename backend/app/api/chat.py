@@ -68,23 +68,43 @@ async def chat_completion(req: ChatCompletionRequest):
     route_result = await model_router.route(prompt, req.model)
     selected_model = route_result.selected_model
 
-    # 5. Build context history from MongoDB
+    # 5. Autonomous Memory Capture & Long-Term Context Retrieval
+    captured_mem = None
+    memory_block = ""
+    memory_categories: List[str] = []
+    try:
+        from backend.app.memory.manager import memory_manager
+        captured_mem = memory_manager.capture_from_interaction(prompt, conv_id)
+        memory_block, memory_categories = memory_manager.build_memory_prompt_injection(prompt, max_tokens=400)
+    except Exception as mem_err:
+        logger.warning(f"Error managing memory in chat: {mem_err}")
+
+    # 6. Build context history from MongoDB
     history_docs = msg_repo.get_by_conversation(conv_id, limit=12)
     messages_payload: List[Dict[str, str]] = []
+
+    # Construct bounded system prompt with injected long-term memory
+    default_sys = "You are DODO, an autonomous local-first AI engineering assistant. Your AI. Your Machine. Your Rules."
     if req.system_prompt:
-        messages_payload.append({"role": "system", "content": req.system_prompt})
+        sys_content = f"{req.system_prompt}\n\n{memory_block}" if memory_block else req.system_prompt
+    elif memory_block:
+        sys_content = f"{default_sys}\n\n{memory_block}"
+    else:
+        sys_content = default_sys
+
+    messages_payload.append({"role": "system", "content": sys_content})
 
     for doc in history_docs:
         role = doc.get("role", "user")
         content = doc.get("content", "")
-        if role in ["user", "assistant", "system"] and content:
+        if role in ["user", "assistant"] and content:
             messages_payload.append({"role": role, "content": content})
 
     # Ensure the latest user message is at the end
     if not messages_payload or messages_payload[-1]["content"] != prompt:
         messages_payload.append({"role": "user", "content": prompt})
 
-    # 6. Stream tokens via SSE
+    # 7. Stream tokens via SSE
     async def sse_event_stream():
         accumulated_chunks: List[str] = []
         token_count = 0
@@ -94,6 +114,12 @@ async def chat_completion(req: ChatCompletionRequest):
 
         # Emit routing metadata event
         yield f"data: {json.dumps({'type': 'routing', 'conversation_id': conv_id, 'model': selected_model, 'role': route_result.role, 'reason': route_result.reason, 'is_installed': route_result.is_installed, 'hardware_fit': route_result.hardware_fit})}\n\n"
+
+        # Emit memory telemetry events
+        if memory_categories:
+            yield f"data: {json.dumps({'type': 'memory_influence', 'categories': memory_categories, 'count': len(memory_categories)})}\n\n"
+        if captured_mem:
+            yield f"data: {json.dumps({'type': 'memory_captured', 'category': captured_mem.get('category'), 'memory_id': captured_mem.get('id')})}\n\n"
 
         options = {"temperature": req.temperature or 0.3}
 

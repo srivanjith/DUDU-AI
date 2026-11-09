@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { MessageSquare, Plus, Terminal, Code2, Cpu, Settings, Trash2, Globe, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
+import { MessageSquare, Plus, Terminal, Code2, Cpu, Settings, Trash2, Globe, Sparkles, CheckCircle2, AlertCircle, Brain } from "lucide-react";
 import { Conversation, SystemHealth } from "@/types";
 
 interface SidebarProps {
@@ -10,7 +10,7 @@ interface SidebarProps {
   onSelectConv: (id: string) => void;
   onNewChat: () => void;
   onDeleteConv: (id: string, e: React.MouseEvent) => void;
-  activeTab: "chat" | "developer" | "editor" | "terminal" | "browser" | "models" | "settings";
+  activeTab: "chat" | "developer" | "editor" | "terminal" | "browser" | "memory" | "models" | "settings";
   onSelectTab: (tab: any) => void;
   health: SystemHealth | null;
 }
@@ -103,6 +103,18 @@ export function Sidebar({
         >
           <Globe className="w-4 h-4 text-sky-400" />
           <span>Browser Verification</span>
+        </button>
+
+        <button
+          onClick={() => onSelectTab("memory")}
+          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+            activeTab === "memory"
+              ? "bg-purple-600/20 text-purple-400 border border-purple-500/30 font-semibold"
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+          }`}
+        >
+          <Brain className="w-4 h-4 text-purple-400" />
+          <span>Memory Center</span>
         </button>
       </div>
 
