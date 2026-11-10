@@ -1,0 +1,245 @@
+"use client";
+
+import React from "react";
+import {
+  Layers,
+  FolderGit2,
+  Save,
+  Check,
+  Bot,
+  Sparkles,
+  Settings,
+  PanelLeft,
+  PanelBottom,
+  PanelRight,
+  Search,
+  Cpu,
+  ShieldCheck,
+  ChevronDown,
+} from "lucide-react";
+
+interface TopNavBarProps {
+  projectName: string;
+  workspacePath: string;
+  isDirty: boolean;
+  onSaveActiveFile: () => void;
+  selectedModel: string;
+  onSelectModel: (model: string) => void;
+  availableModels: string[];
+  agentStatus: "idle" | "planning" | "executing" | "awaiting_approval" | "completed" | "error";
+  showLeftSidebar: boolean;
+  onToggleLeftSidebar: () => void;
+  showBottomPanel: boolean;
+  onToggleBottomPanel: () => void;
+  showRightAgent: boolean;
+  onToggleRightAgent: () => void;
+  onOpenCommandPalette: () => void;
+  onOpenQuickOpen: () => void;
+  onOpenSettings: () => void;
+}
+
+export function TopNavBar({
+  projectName,
+  workspacePath,
+  isDirty,
+  onSaveActiveFile,
+  selectedModel,
+  onSelectModel,
+  availableModels,
+  agentStatus,
+  showLeftSidebar,
+  onToggleLeftSidebar,
+  showBottomPanel,
+  onToggleBottomPanel,
+  showRightAgent,
+  onToggleRightAgent,
+  onOpenCommandPalette,
+  onOpenQuickOpen,
+  onOpenSettings,
+}: TopNavBarProps) {
+  const getAgentStatusBadge = () => {
+    switch (agentStatus) {
+      case "planning":
+        return {
+          label: "Agent Planning...",
+          color: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30",
+          dot: "bg-indigo-400 animate-pulse",
+        };
+      case "executing":
+        return {
+          label: "Agent Executing",
+          color: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+          dot: "bg-amber-400 animate-ping",
+        };
+      case "awaiting_approval":
+        return {
+          label: "Approval Required",
+          color: "bg-rose-500/20 text-rose-400 border-rose-500/40",
+          dot: "bg-rose-400 animate-pulse",
+        };
+      case "completed":
+        return {
+          label: "Agent Completed",
+          color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+          dot: "bg-emerald-400",
+        };
+      case "error":
+        return {
+          label: "Agent Error",
+          color: "bg-red-500/20 text-red-400 border-red-500/30",
+          dot: "bg-red-400",
+        };
+      default:
+        return {
+          label: "Agent Ready",
+          color: "bg-slate-800 text-slate-400 border-slate-700",
+          dot: "bg-emerald-500",
+        };
+    }
+  };
+
+  const badge = getAgentStatusBadge();
+
+  return (
+    <header className="h-10 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-3 text-xs select-none z-30">
+      {/* Left: Brand + Project Info */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 font-bold tracking-tight text-white cursor-pointer hover:opacity-90 transition-opacity">
+          <div className="w-5 h-5 rounded bg-gradient-to-tr from-amber-500 to-amber-400 flex items-center justify-center shadow-sm">
+            <span className="text-[10px] text-slate-950 font-black">🦅</span>
+          </div>
+          <span className="text-[13px] tracking-wider font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-white">
+            DODO
+          </span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 font-mono border border-amber-500/30 font-semibold">
+            IDE
+          </span>
+        </div>
+
+        <div className="h-4 w-[1px] bg-slate-800" />
+
+        {/* Project Path Indicator */}
+        <div className="flex items-center gap-1.5 text-slate-300 font-medium">
+          <FolderGit2 className="w-3.5 h-3.5 text-slate-400" />
+          <span className="text-white font-semibold">{projectName || "workspace"}</span>
+          <span className="text-slate-500 font-mono text-[11px] hidden md:inline truncate max-w-xs" title={workspacePath}>
+            [{workspacePath}]
+          </span>
+        </div>
+      </div>
+
+      {/* Center: Command Palette / Search Trigger */}
+      <div className="flex-1 max-w-md mx-4 hidden sm:flex items-center">
+        <button
+          onClick={onOpenCommandPalette}
+          className="w-full h-7 bg-slate-950/80 hover:bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-md px-2.5 flex items-center justify-between text-slate-400 hover:text-slate-200 transition-colors shadow-inner"
+        >
+          <div className="flex items-center gap-2">
+            <Search className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-[11px]">DODO Command Palette & Files...</span>
+          </div>
+          <kbd className="text-[9px] font-mono px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-slate-400">
+            Ctrl+Shift+P
+          </kbd>
+        </button>
+      </div>
+
+      {/* Right: Model Selector + Agent Status + Layout Controls */}
+      <div className="flex items-center gap-2.5">
+        {/* Save Status Button */}
+        <button
+          onClick={onSaveActiveFile}
+          disabled={!isDirty}
+          title={isDirty ? "Save file (Ctrl+S)" : "All files saved"}
+          className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium border transition-colors ${
+            isDirty
+              ? "bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30 animate-pulse"
+              : "bg-slate-800/40 text-slate-400 border-slate-800 cursor-default"
+          }`}
+        >
+          {isDirty ? (
+            <>
+              <Save className="w-3 h-3 text-amber-400" />
+              <span>Save (Ctrl+S)</span>
+            </>
+          ) : (
+            <>
+              <Check className="w-3 h-3 text-emerald-400" />
+              <span>Saved</span>
+            </>
+          )}
+        </button>
+
+        {/* Model Selector Dropdown */}
+        <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded px-2 py-0.5 text-[11px]">
+          <Cpu className="w-3 h-3 text-indigo-400" />
+          <select
+            value={selectedModel}
+            onChange={(e) => onSelectModel(e.target.value)}
+            className="bg-transparent text-slate-200 focus:outline-none cursor-pointer pr-1 text-[11px]"
+          >
+            <option value="auto" className="bg-slate-900 text-white">Auto Router (Hardware Aware)</option>
+            {availableModels.map((m) => (
+              <option key={m} value={m} className="bg-slate-900 text-white">
+                {m} (Local Ollama)
+              </option>
+            ))}
+            {!availableModels.includes("qwen2.5-coder:1.5b") && (
+              <option value="qwen2.5-coder:1.5b" className="bg-slate-900 text-white">
+                qwen2.5-coder:1.5b (Default)
+              </option>
+            )}
+          </select>
+        </div>
+
+        {/* Agent Status Pill */}
+        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-medium ${badge.color}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+          <span>{badge.label}</span>
+        </div>
+
+        <div className="h-4 w-[1px] bg-slate-800" />
+
+        {/* Layout Toggle Buttons */}
+        <div className="flex items-center gap-0.5 bg-slate-950 border border-slate-800 rounded p-0.5">
+          <button
+            onClick={onToggleLeftSidebar}
+            title="Toggle Primary Sidebar (Ctrl+B)"
+            className={`p-1 rounded hover:text-white transition-colors ${
+              showLeftSidebar ? "bg-slate-800 text-white" : "text-slate-500 hover:bg-slate-900"
+            }`}
+          >
+            <PanelLeft className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={onToggleBottomPanel}
+            title="Toggle Bottom Terminal/Preview Panel (Ctrl+`)"
+            className={`p-1 rounded hover:text-white transition-colors ${
+              showBottomPanel ? "bg-slate-800 text-white" : "text-slate-500 hover:bg-slate-900"
+            }`}
+          >
+            <PanelBottom className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={onToggleRightAgent}
+            title="Toggle AI Agent Panel (Ctrl+Shift+A)"
+            className={`p-1 rounded hover:text-white transition-colors ${
+              showRightAgent ? "bg-slate-800 text-amber-400" : "text-slate-500 hover:bg-slate-900"
+            }`}
+          >
+            <PanelRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Settings button */}
+        <button
+          onClick={onOpenSettings}
+          title="IDE & Model Settings"
+          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"
+        >
+          <Settings className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </header>
+  );
+}

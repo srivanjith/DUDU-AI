@@ -233,4 +233,30 @@ export interface MemoryRecord {
   match_reasons?: string[];
 }
 
+export interface GitFileStatus {
+  path: string;
+  status: "modified" | "untracked" | "added" | "deleted" | "renamed";
+  index_status: string;
+  worktree_status: string;
+  is_staged: boolean;
+}
+
+export interface GitStatusResult {
+  is_git_repo: boolean;
+  branch: string | null;
+  root_path?: string;
+  status: string;
+  files: GitFileStatus[];
+  staged_count: number;
+  unstaged_count: number;
+}
+
+export interface GitCommitRecord {
+  hash: string;
+  author: string;
+  time_ago: string;
+  subject: string;
+}
+
+
 

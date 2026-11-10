@@ -47,6 +47,11 @@ class SaveFileRequest(BaseModel):
     overwrite: Optional[bool] = True
 
 
+class CreateFolderRequest(BaseModel):
+    path: str
+    workspace_path: Optional[str] = None
+
+
 class EditFileRequest(BaseModel):
     path: str
     target: str
@@ -193,6 +198,19 @@ def save_file(req: SaveFileRequest):
     if "error" in res:
         raise HTTPException(status_code=400, detail=res["error"])
     return res
+
+
+@router.post("/workspace/folder")
+@router.post("/api/workspace/folder")
+def create_folder(req: CreateFolderRequest):
+    valid, target_path, err = validate_workspace_path(req.path, workspace_root=req.workspace_path)
+    if not valid:
+        raise HTTPException(status_code=400, detail=err)
+    try:
+        target_path.mkdir(parents=True, exist_ok=True)
+        return {"success": True, "path": req.path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/workspace/edit")

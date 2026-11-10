@@ -400,3 +400,96 @@ export async function searchMemories(query: string, category?: string, projectId
   });
   return res.json();
 }
+
+// Git Source Control APIs
+export async function fetchGitStatus(workspacePath?: string) {
+  const url = workspacePath ? `${API_BASE}/api/git/status?workspace_path=${encodeURIComponent(workspacePath)}` : `${API_BASE}/api/git/status`;
+  const res = await fetch(url);
+  return res.json();
+}
+
+export async function fetchGitDiff(path?: string, staged: boolean = false, workspacePath?: string) {
+  let url = `${API_BASE}/api/git/diff?staged=${staged}`;
+  if (path) url += `&path=${encodeURIComponent(path)}`;
+  if (workspacePath) url += `&workspace_path=${encodeURIComponent(workspacePath)}`;
+  const res = await fetch(url);
+  return res.json();
+}
+
+export async function stageGitFile(path: string, workspacePath?: string) {
+  const res = await fetch(`${API_BASE}/api/git/stage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path, workspace_path: workspacePath }),
+  });
+  return res.json();
+}
+
+export async function unstageGitFile(path: string, workspacePath?: string) {
+  const res = await fetch(`${API_BASE}/api/git/unstage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path, workspace_path: workspacePath }),
+  });
+  return res.json();
+}
+
+export async function commitGitChanges(message: string, workspacePath?: string) {
+  const res = await fetch(`${API_BASE}/api/git/commit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, workspace_path: workspacePath }),
+  });
+  return res.json();
+}
+
+export async function fetchGitHistory(limit = 15, workspacePath?: string) {
+  const url = workspacePath ? `${API_BASE}/api/git/history?limit=${limit}&workspace_path=${encodeURIComponent(workspacePath)}` : `${API_BASE}/api/git/history?limit=${limit}`;
+  const res = await fetch(url);
+  return res.json();
+}
+
+export async function pushGitChanges(remote = "origin", branch?: string, workspacePath?: string) {
+  const res = await fetch(`${API_BASE}/api/git/push`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ remote, branch, workspace_path: workspacePath }),
+  });
+  return res.json();
+}
+
+export async function pullGitChanges(remote = "origin", workspacePath?: string) {
+  const res = await fetch(`${API_BASE}/api/git/pull`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ remote, workspace_path: workspacePath }),
+  });
+  return res.json();
+}
+
+export async function createWorkspaceFolder(path: string, workspacePath?: string) {
+  const res = await fetch(`${API_BASE}/api/workspace/folder`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path, workspace_path: workspacePath }),
+  });
+  return res.json();
+}
+
+export async function renameWorkspaceFile(oldPath: string, newPath: string, overwrite = false) {
+  const res = await fetch(`${API_BASE}/api/workspace/rename`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ old_path: oldPath, new_path: newPath, overwrite }),
+  });
+  return res.json();
+}
+
+export async function deleteWorkspaceFile(path: string, confirmed = true) {
+  const res = await fetch(`${API_BASE}/api/workspace/delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path, confirmed }),
+  });
+  return res.json();
+}
