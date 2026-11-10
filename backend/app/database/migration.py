@@ -159,3 +159,4 @@ class DatabaseMigrationManager:
 
 
 migration_manager = DatabaseMigrationManager()
+

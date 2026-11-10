@@ -163,6 +163,7 @@ class MongoDBManager:
             return {
                 "status": "connected",
                 "database": settings.MONGODB_DB_NAME,
+                "mode": "external standalone MongoDB",
                 "version": server_info.get("version", "unknown"),
                 "collections_count": len(self.db.list_collection_names()),
                 "latency_ms": latency,
