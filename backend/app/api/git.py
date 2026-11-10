@@ -255,3 +255,4 @@ def pull_changes(req: PushPullRequest) -> Dict[str, Any]:
     if res.returncode != 0:
         raise HTTPException(status_code=400, detail=res.stderr or "Failed to pull from remote.")
     return {"success": True, "output": res.stdout}
+

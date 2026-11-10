@@ -316,3 +316,4 @@ export function SidebarGit({ onOpenFileDiff }: SidebarGitProps) {
     </div>
   );
 }
+

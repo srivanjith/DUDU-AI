@@ -228,3 +228,4 @@ export function EditorArea({
     </div>
   );
 }
+

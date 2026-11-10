@@ -104,3 +104,4 @@ export function StatusBar({
     </footer>
   );
 }
+

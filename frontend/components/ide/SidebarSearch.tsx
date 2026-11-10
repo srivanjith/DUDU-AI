@@ -126,3 +126,4 @@ export function SidebarSearch({ onOpenFileAtLine }: SidebarSearchProps) {
     </div>
   );
 }
+

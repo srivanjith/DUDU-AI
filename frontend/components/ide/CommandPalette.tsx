@@ -139,3 +139,4 @@ export function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProp
     </div>
   );
 }
+

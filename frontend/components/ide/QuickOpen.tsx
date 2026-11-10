@@ -121,3 +121,4 @@ export function QuickOpen({ isOpen, onClose, files, onSelectFile }: QuickOpenPro
     </div>
   );
 }
+

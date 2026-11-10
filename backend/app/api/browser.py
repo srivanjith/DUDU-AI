@@ -54,7 +54,15 @@ async def get_browser_status():
     url = await browser_engine.get_url() if running else None
     title = await browser_engine.get_title() if running else None
     tabs = browser_engine.list_tabs() if running else []
-    diag = browser_engine.get_diagnostics() if running else {"error_count": 0, "status": "idle"}
+    diag = browser_engine.get_diagnostics() if running else {
+        "status": "idle",
+        "error_count": 0,
+        "console_errors": [],
+        "page_errors": [],
+        "network_failures": [],
+        "http_errors": [],
+        "recent_console_logs": [],
+    }
 
     return {
         "status": "online" if running else "stopped",

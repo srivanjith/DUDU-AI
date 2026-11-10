@@ -79,7 +79,17 @@ export function BrowserPreview() {
       const data = await res.json();
       setIsRunning(data.running);
       if (data.page_title) setPageTitle(data.page_title);
-      if (data.diagnostics) setDiagnostics(data.diagnostics);
+      if (data.diagnostics) {
+        setDiagnostics((prev) => ({
+          ...prev,
+          ...data.diagnostics,
+          console_errors: data.diagnostics.console_errors || [],
+          page_errors: data.diagnostics.page_errors || [],
+          network_failures: data.diagnostics.network_failures || [],
+          http_errors: data.diagnostics.http_errors || [],
+          recent_console_logs: data.diagnostics.recent_console_logs || [],
+        }));
+      }
       if (data.running) fetchTabs();
     } catch {}
   };
@@ -171,7 +181,17 @@ export function BrowserPreview() {
     try {
       const res = await fetch("http://127.0.0.1:8000/api/browser/diagnostics");
       const data = await res.json();
-      setDiagnostics(data);
+      if (data) {
+        setDiagnostics((prev) => ({
+          ...prev,
+          ...data,
+          console_errors: data.console_errors || [],
+          page_errors: data.page_errors || [],
+          network_failures: data.network_failures || [],
+          http_errors: data.http_errors || [],
+          recent_console_logs: data.recent_console_logs || [],
+        }));
+      }
     } catch {}
   };
 
@@ -346,9 +366,9 @@ export function BrowserPreview() {
             }`}
           >
             <span>Console</span>
-            {diagnostics.console_errors.length > 0 && (
+            {(diagnostics?.console_errors || []).length > 0 && (
               <span className="px-1 py-0.2 rounded-full text-[9px] bg-rose-500 text-white font-bold">
-                {diagnostics.console_errors.length}
+                {(diagnostics?.console_errors || []).length}
               </span>
             )}
           </button>
@@ -362,9 +382,9 @@ export function BrowserPreview() {
             }`}
           >
             <span>Network</span>
-            {diagnostics.network_failures.length > 0 && (
+            {(diagnostics?.network_failures || []).length > 0 && (
               <span className="px-1 py-0.2 rounded-full text-[9px] bg-rose-500 text-white font-bold">
-                {diagnostics.network_failures.length}
+                {(diagnostics?.network_failures || []).length}
               </span>
             )}
           </button>
@@ -462,19 +482,19 @@ export function BrowserPreview() {
               </button>
             </div>
 
-            {diagnostics.console_errors.length === 0 && diagnostics.recent_console_logs.length === 0 ? (
+            {(diagnostics?.console_errors || []).length === 0 && (diagnostics?.recent_console_logs || []).length === 0 ? (
               <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-sans">
                 <ShieldCheck className="w-4 h-4" />
                 <span>Zero console errors or exceptions detected on this page.</span>
               </div>
             ) : (
               <div className="space-y-2">
-                {diagnostics.console_errors.map((err, i) => (
+                {(diagnostics?.console_errors || []).map((err, i) => (
                   <div key={i} className="p-2.5 bg-rose-950/40 border border-rose-800/60 rounded-lg text-rose-300 text-[11px]">
                     {err}
                   </div>
                 ))}
-                {diagnostics.recent_console_logs.map((log, i) => (
+                {(diagnostics?.recent_console_logs || []).map((log, i) => (
                   <div key={i} className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-300 text-[11px]">
                     {log}
                   </div>
@@ -502,14 +522,14 @@ export function BrowserPreview() {
               </button>
             </div>
 
-            {diagnostics.network_failures.length === 0 && diagnostics.http_errors.length === 0 ? (
+            {(diagnostics?.network_failures || []).length === 0 && (diagnostics?.http_errors || []).length === 0 ? (
               <div className="flex items-center gap-2 p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-sans">
                 <ShieldCheck className="w-4 h-4" />
                 <span>All network requests succeeded with valid HTTP response status.</span>
               </div>
             ) : (
               <div className="space-y-2">
-                {diagnostics.network_failures.map((fail, i) => (
+                {(diagnostics?.network_failures || []).map((fail, i) => (
                   <div key={i} className="p-3 bg-rose-950/40 border border-rose-800/60 rounded-lg space-y-1 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-rose-400">{fail.method} {fail.url}</span>
