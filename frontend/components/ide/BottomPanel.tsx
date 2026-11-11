@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Terminal as TerminalIcon,
   Globe,
@@ -36,16 +36,48 @@ export function BottomPanel({
   problemsCount = 0,
 }: BottomPanelProps) {
   const [isMaximized, setIsMaximized] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newHeight = window.innerHeight - e.clientY - 24; // 24px status bar
+      if (newHeight >= 120 && newHeight <= window.innerHeight - 80) {
+        onResize(newHeight);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging, onResize]);
 
   if (!isOpen) return null;
 
-  const panelHeight = isMaximized ? "calc(100vh - 40px)" : `${height}px`;
+  const panelHeight = isMaximized ? "calc(100vh - 64px)" : `${height}px`;
 
   return (
     <div
       style={{ height: panelHeight }}
-      className="border-t border-slate-800 bg-slate-950 flex flex-col z-20 transition-[height] duration-150 ease-out"
+      className={`border-t border-slate-800 bg-slate-950 flex flex-col z-20 ${
+        isDragging ? "select-none" : "transition-[height] duration-150 ease-out"
+      }`}
     >
+      {/* Draggable Top Resize Handle */}
+      <div
+        onMouseDown={() => setIsDragging(true)}
+        className="h-1 w-full cursor-row-resize bg-transparent hover:bg-amber-400/50 transition-colors z-30 -mb-1"
+        title="Drag to resize panel height"
+      />
+
       {/* Top Header / Tab Switcher */}
       <div className="h-9 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-2 text-xs select-none">
         <div className="flex items-center gap-1">

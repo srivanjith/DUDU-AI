@@ -14,6 +14,7 @@ import { CommandPalette, CommandItem } from "@/components/ide/CommandPalette";
 import { QuickOpen } from "@/components/ide/QuickOpen";
 import { SettingsModal } from "@/components/SettingsModal";
 import { MemoryCenter } from "@/components/MemoryCenter";
+import { SidebarMemory } from "@/components/ide/SidebarMemory";
 
 import {
   WorkspaceFile,
@@ -53,6 +54,7 @@ import {
   Settings,
   Split,
   Plus,
+  X,
 } from "lucide-react";
 
 export default function DodoIDE() {
@@ -68,18 +70,25 @@ export default function DodoIDE() {
   const [activeTabPath, setActiveTabPath] = useState<string | null>(null);
   const [showDiff, setShowDiff] = useState(false);
 
-  // 3. Layout Panels Visibility
+  // 3. Layout Panels Visibility & Resizable Dimensions
   const [showLeftSidebar, setShowLeftSidebar] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("explorer");
+  const [sidebarWidth, setSidebarWidth] = useState(280);
   const [showBottomPanel, setShowBottomPanel] = useState(true);
   const [bottomTab, setBottomTab] = useState<BottomTab>("terminal");
   const [bottomHeight, setBottomHeight] = useState(250);
   const [showRightAgent, setShowRightAgent] = useState(true);
+  const [rightAgentWidth, setRightAgentWidth] = useState(400);
+
+  // Splitter dragging states
+  const [isDraggingSidebar, setIsDraggingSidebar] = useState(false);
+  const [isDraggingRightAgent, setIsDraggingRightAgent] = useState(false);
 
   // 4. Modals State
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isQuickOpenOpen, setIsQuickOpenOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isMemoryCenterOpen, setIsMemoryCenterOpen] = useState(false);
 
   // 5. AI Models & Health
   const [health, setHealth] = useState<SystemHealth | null>(null);
@@ -162,6 +171,39 @@ export default function DodoIDE() {
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, [activeTab]);
+
+  // Dynamic Horizontal Splitter Dragging (Sidebar & Right Agent)
+  useEffect(() => {
+    if (!isDraggingSidebar && !isDraggingRightAgent) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingSidebar) {
+        // Activity bar is 48px wide
+        const newWidth = e.clientX - 48;
+        if (newWidth >= 180 && newWidth <= 520) {
+          setSidebarWidth(newWidth);
+        }
+      }
+      if (isDraggingRightAgent) {
+        const newWidth = window.innerWidth - e.clientX;
+        if (newWidth >= 280 && newWidth <= 720) {
+          setRightAgentWidth(newWidth);
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingSidebar(false);
+      setIsDraggingRightAgent(false);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDraggingSidebar, isDraggingRightAgent]);
 
   // Loaders
   const loadHealth = async () => {
@@ -667,7 +709,10 @@ export default function DodoIDE() {
 
         {/* Primary Sidebar Content (Explorer, Search, Git, Memory) */}
         {showLeftSidebar && (
-          <div className="w-64 md:w-72 border-r border-slate-800/80 bg-slate-900/40 flex flex-col overflow-hidden transition-all duration-150 ease-out z-10">
+          <div
+            style={{ width: `${sidebarWidth}px` }}
+            className="border-r border-slate-800/80 bg-slate-900/40 flex flex-col overflow-hidden z-10 flex-shrink-0"
+          >
             {sidebarTab === "explorer" && (
               <SidebarExplorer
                 files={files}
@@ -739,15 +784,22 @@ export default function DodoIDE() {
             )}
 
             {sidebarTab === "memory" && (
-              <div className="flex-1 flex flex-col h-full overflow-hidden">
-                <MemoryCenter />
-              </div>
+              <SidebarMemory onOpenFullView={() => setIsMemoryCenterOpen(true)} />
             )}
           </div>
         )}
 
+        {/* Draggable Vertical Splitter: Sidebar / Editor */}
+        {showLeftSidebar && (
+          <div
+            onMouseDown={() => setIsDraggingSidebar(true)}
+            className="w-1 cursor-col-resize bg-slate-800/80 hover:bg-amber-400/50 transition-colors z-20 flex-shrink-0"
+            title="Drag to resize sidebar"
+          />
+        )}
+
         {/* Center: Monaco Editor Area + Bottom Resizable Panel */}
-        <div className="flex-1 flex flex-col overflow-hidden relative">
+        <div className="flex-1 flex flex-col overflow-hidden relative min-w-0">
           {/* Main Editor Center */}
           <div className="flex-1 flex flex-col overflow-hidden relative">
             <EditorArea
@@ -774,6 +826,15 @@ export default function DodoIDE() {
           />
         </div>
 
+        {/* Draggable Vertical Splitter: Editor / Right Agent */}
+        {showRightAgent && (
+          <div
+            onMouseDown={() => setIsDraggingRightAgent(true)}
+            className="w-1 cursor-col-resize bg-slate-800/80 hover:bg-amber-400/50 transition-colors z-20 flex-shrink-0"
+            title="Drag to resize AI Agent panel"
+          />
+        )}
+
         {/* Right: Antigravity-like Persistent AI Agent Panel */}
         {showRightAgent && (
           <RightAgentPanel
@@ -791,6 +852,7 @@ export default function DodoIDE() {
             selectedModel={selectedModel}
             onSelectModel={setSelectedModel}
             onClose={() => setShowRightAgent(false)}
+            width={rightAgentWidth}
           />
         )}
       </div>
@@ -821,7 +883,36 @@ export default function DodoIDE() {
         onSelectFile={handleOpenFile}
       />
 
-      {isSettingsOpen && <SettingsModal health={health} />}
+      {isSettingsOpen && (
+        <SettingsModal
+          health={health}
+          onClose={() => setIsSettingsOpen(false)}
+        />
+      )}
+
+      {isMemoryCenterOpen && (
+        <div
+          onClick={() => setIsMemoryCenterOpen(false)}
+          className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-6 animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-6xl h-[88vh] bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative"
+          >
+            <div className="absolute top-4 right-4 z-50">
+              <button
+                onClick={() => setIsMemoryCenterOpen(false)}
+                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <MemoryCenter />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -43,6 +43,7 @@ interface RightAgentPanelProps {
   selectedModel: string;
   onSelectModel: (m: string) => void;
   onClose: () => void;
+  width?: number;
 }
 
 export function RightAgentPanel({
@@ -60,6 +61,7 @@ export function RightAgentPanel({
   selectedModel,
   onSelectModel,
   onClose,
+  width,
 }: RightAgentPanelProps) {
   const [mode, setMode] = useState<"developer" | "chat">("developer");
   const [prompt, setPrompt] = useState("");
@@ -87,7 +89,10 @@ export function RightAgentPanel({
   const pendingApproval = activeTask?.pending_approval;
 
   return (
-    <aside className="w-96 md:w-[420px] bg-slate-950 border-l border-slate-800 flex flex-col h-full select-none z-20 text-xs overflow-hidden">
+    <aside
+      style={width ? { width: `${width}px` } : undefined}
+      className={`${width ? "" : "w-96 md:w-[420px]"} bg-slate-950 border-l border-slate-800 flex flex-col h-full select-none z-20 text-xs overflow-hidden flex-shrink-0`}
+    >
       {/* Top Header: Mode Switcher + Close */}
       <div className="h-10 bg-slate-900 border-b border-slate-800 px-3 flex items-center justify-between">
         <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded border border-slate-800">
