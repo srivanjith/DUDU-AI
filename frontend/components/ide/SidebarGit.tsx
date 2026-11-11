@@ -29,9 +29,10 @@ import {
 
 interface SidebarGitProps {
   onOpenFileDiff: (filePath: string) => void;
+  workspacePath?: string;
 }
 
-export function SidebarGit({ onOpenFileDiff }: SidebarGitProps) {
+export function SidebarGit({ onOpenFileDiff, workspacePath }: SidebarGitProps) {
   const [gitStatus, setGitStatus] = useState<GitStatusResult | null>(null);
   const [commitMessage, setCommitMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -45,7 +46,7 @@ export function SidebarGit({ onOpenFileDiff }: SidebarGitProps) {
   const loadStatus = async () => {
     setIsLoading(true);
     try {
-      const res = await fetchGitStatus();
+      const res = await fetchGitStatus(workspacePath);
       setGitStatus(res);
       if (showHistory) {
         loadHistory();
@@ -59,7 +60,7 @@ export function SidebarGit({ onOpenFileDiff }: SidebarGitProps) {
 
   const loadHistory = async () => {
     try {
-      const h = await fetchGitHistory(15);
+      const h = await fetchGitHistory(15, workspacePath);
       setCommitHistory(h || []);
     } catch (e) {
       console.error(e);
@@ -68,12 +69,12 @@ export function SidebarGit({ onOpenFileDiff }: SidebarGitProps) {
 
   useEffect(() => {
     loadStatus();
-  }, []);
+  }, [workspacePath]);
 
   const handleStage = async (filePath: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await stageGitFile(filePath);
+      await stageGitFile(filePath, workspacePath);
       loadStatus();
     } catch (e) {
       console.error(e);
@@ -83,7 +84,7 @@ export function SidebarGit({ onOpenFileDiff }: SidebarGitProps) {
   const handleUnstage = async (filePath: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await unstageGitFile(filePath);
+      await unstageGitFile(filePath, workspacePath);
       loadStatus();
     } catch (e) {
       console.error(e);
@@ -95,7 +96,7 @@ export function SidebarGit({ onOpenFileDiff }: SidebarGitProps) {
     if (!commitMessage.trim() || isCommitting) return;
     setIsCommitting(true);
     try {
-      const res = await commitGitChanges(commitMessage.trim());
+      const res = await commitGitChanges(commitMessage.trim(), workspacePath);
       setActionMessage(`Committed: ${res.commit}`);
       setCommitMessage("");
       setTimeout(() => setActionMessage(null), 3000);
@@ -111,7 +112,7 @@ export function SidebarGit({ onOpenFileDiff }: SidebarGitProps) {
     if (!confirm("Push current branch commits to origin?")) return;
     setIsPushing(true);
     try {
-      await pushGitChanges();
+      await pushGitChanges("origin", undefined, workspacePath);
       setActionMessage("Pushed to remote successfully!");
       setTimeout(() => setActionMessage(null), 3000);
       loadStatus();
@@ -125,7 +126,7 @@ export function SidebarGit({ onOpenFileDiff }: SidebarGitProps) {
   const handlePull = async () => {
     setIsPulling(true);
     try {
-      await pullGitChanges();
+      await pullGitChanges("origin", workspacePath);
       setActionMessage("Pulled latest changes from remote!");
       setTimeout(() => setActionMessage(null), 3000);
       loadStatus();

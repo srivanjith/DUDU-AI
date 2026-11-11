@@ -12,6 +12,8 @@ import {
   History,
   Sparkles,
   Command,
+  FolderOpen,
+  FolderPlus,
 } from "lucide-react";
 
 export interface FileTab {
@@ -30,6 +32,8 @@ interface EditorAreaProps {
   showDiff: boolean;
   onToggleDiff: () => void;
   onTriggerAgentTask?: (prompt: string) => void;
+  onOpenProject?: () => void;
+  onNewProject?: () => void;
 }
 
 export function EditorArea({
@@ -42,6 +46,8 @@ export function EditorArea({
   showDiff,
   onToggleDiff,
   onTriggerAgentTask,
+  onOpenProject,
+  onNewProject,
 }: EditorAreaProps) {
   const activeTab = openTabs.find((t) => t.path === activeTabPath);
   const isDirty = activeTab ? activeTab.originalContent !== activeTab.currentContent : false;
@@ -163,6 +169,28 @@ export function EditorArea({
             <div className="text-center space-y-1">
               <h2 className="text-xl font-bold text-white tracking-tight">DODO IDE</h2>
               <p className="text-xs text-slate-400 font-medium">Your AI. Your Machine. Your Rules.</p>
+            </div>
+
+            {/* Quick Project Actions */}
+            <div className="flex items-center gap-3 pt-1">
+              {onOpenProject && (
+                <button
+                  onClick={onOpenProject}
+                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition-colors shadow-sm"
+                >
+                  <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Open Project...</span>
+                </button>
+              )}
+              {onNewProject && (
+                <button
+                  onClick={onNewProject}
+                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/80 text-xs font-semibold transition-colors shadow-sm"
+                >
+                  <FolderPlus className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>New Project...</span>
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs text-slate-400 max-w-sm mt-4">

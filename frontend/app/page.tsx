@@ -15,6 +15,8 @@ import { QuickOpen } from "@/components/ide/QuickOpen";
 import { SettingsModal } from "@/components/SettingsModal";
 import { MemoryCenter } from "@/components/MemoryCenter";
 import { SidebarMemory } from "@/components/ide/SidebarMemory";
+import { OpenProjectModal } from "@/components/ide/OpenProjectModal";
+import { NewProjectModal } from "@/components/ide/NewProjectModal";
 
 import {
   WorkspaceFile,
@@ -55,6 +57,8 @@ import {
   Split,
   Plus,
   X,
+  FolderOpen,
+  FolderPlus,
 } from "lucide-react";
 
 export default function DodoIDE() {
@@ -89,6 +93,8 @@ export default function DodoIDE() {
   const [isQuickOpenOpen, setIsQuickOpenOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMemoryCenterOpen, setIsMemoryCenterOpen] = useState(false);
+  const [isOpenProjectOpen, setIsOpenProjectOpen] = useState(false);
+  const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
 
   // 5. AI Models & Health
   const [health, setHealth] = useState<SystemHealth | null>(null);
@@ -133,6 +139,11 @@ export default function DodoIDE() {
       else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "p") {
         e.preventDefault();
         setIsQuickOpenOpen((prev) => !prev);
+      }
+      // Ctrl+O: Open Project
+      else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "o") {
+        e.preventDefault();
+        setIsOpenProjectOpen(true);
       }
       // Ctrl+S: Save Active File
       else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
@@ -218,14 +229,16 @@ export default function DodoIDE() {
     }
   };
 
-  const loadWorkspace = async () => {
+  const loadWorkspace = async (customPath?: string) => {
     try {
-      const res = await fetchWorkspaceFiles();
+      const activeP = customPath || workspacePath;
+      const res = await fetchWorkspaceFiles(activeP);
       setFiles(res.items || []);
 
-      const statusRes = await fetchWorkspaceStatus();
+      const statusRes = await fetchWorkspaceStatus(activeP);
       if (statusRes) {
-        setWorkspacePath(statusRes.authorized_workspace || "D:\\DODO\\workspace");
+        const resolved = statusRes.authorized_workspace || activeP;
+        setWorkspacePath(resolved);
         if (statusRes.scan) {
           setProjectScan(statusRes.scan);
           setProjectName(statusRes.scan.project_name || "workspace");
@@ -236,12 +249,41 @@ export default function DodoIDE() {
     }
   };
 
-  const loadGit = async () => {
+  const loadGit = async (customPath?: string) => {
     try {
-      const g = await fetchGitStatus();
+      const g = await fetchGitStatus(customPath || workspacePath);
       setGitStatus(g);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleProjectLoaded = (data: {
+    project: any;
+    scan: any;
+    files: any[];
+    workspace_path: string;
+  }) => {
+    const newPath = data.workspace_path;
+    setWorkspacePath(newPath);
+    setProjectName(data.project?.name || data.scan?.project_name || "Project");
+    setProjectScan(data.scan);
+    setFiles(data.files || []);
+    setOpenTabs([]);
+    setActiveTabPath(null);
+
+    loadGit(newPath);
+    loadTasks();
+
+    // Automatically open first key file
+    const items = data.files || [];
+    const priorityFiles = ["README.md", "src/App.tsx", "main.py", "index.html", "index.js", "package.json"];
+    const fileToOpen =
+      priorityFiles.find((pf) => items.some((f: any) => !f.is_dir && (f.path === pf || f.path.endsWith(pf)))) ||
+      items.find((f: any) => !f.is_dir)?.path;
+
+    if (fileToOpen) {
+      handleOpenFile(fileToOpen, newPath);
     }
   };
 
@@ -258,14 +300,15 @@ export default function DodoIDE() {
   };
 
   // Editor Tab Actions
-  const handleOpenFile = async (path: string) => {
+  const handleOpenFile = async (path: string, customWorkspace?: string) => {
     const existing = openTabs.find((t) => t.path === path);
     if (existing) {
       setActiveTabPath(path);
       return;
     }
     try {
-      const res = await fetchFileContent(path);
+      const ws = customWorkspace || workspacePath;
+      const res = await fetchFileContent(path, ws);
       const content = res.content || "";
       const newTab: FileTab = {
         path,
@@ -298,14 +341,14 @@ export default function DodoIDE() {
   const handleSaveActiveFile = async () => {
     if (!activeTab || !isDirty) return;
     try {
-      await saveWorkspaceFile(activeTab.path, activeTab.currentContent);
+      await saveWorkspaceFile(activeTab.path, activeTab.currentContent, workspacePath);
       setOpenTabs((prev) =>
         prev.map((t) =>
           t.path === activeTab.path ? { ...t, originalContent: activeTab.currentContent } : t
         )
       );
-      loadWorkspace();
-      loadGit();
+      loadWorkspace(workspacePath);
+      loadGit(workspacePath);
     } catch (e) {
       console.error("Save error", e);
     }
@@ -314,9 +357,9 @@ export default function DodoIDE() {
   // File Operations
   const handleCreateFile = async (name: string) => {
     try {
-      await saveWorkspaceFile(name, "");
-      loadWorkspace();
-      handleOpenFile(name);
+      await saveWorkspaceFile(name, "", workspacePath);
+      loadWorkspace(workspacePath);
+      handleOpenFile(name, workspacePath);
     } catch (e) {
       console.error(e);
     }
@@ -324,8 +367,8 @@ export default function DodoIDE() {
 
   const handleCreateFolder = async (name: string) => {
     try {
-      await createWorkspaceFolder(name);
-      loadWorkspace();
+      await createWorkspaceFolder(name, workspacePath);
+      loadWorkspace(workspacePath);
     } catch (e) {
       console.error(e);
     }
@@ -333,8 +376,8 @@ export default function DodoIDE() {
 
   const handleRenameFile = async (oldPath: string, newPath: string) => {
     try {
-      await renameWorkspaceFile(oldPath, newPath);
-      loadWorkspace();
+      await renameWorkspaceFile(oldPath, newPath, false, workspacePath);
+      loadWorkspace(workspacePath);
       // Update tab if open
       setOpenTabs((prev) =>
         prev.map((t) => (t.path === oldPath ? { ...t, path: newPath } : t))
@@ -349,8 +392,8 @@ export default function DodoIDE() {
 
   const handleDeleteFile = async (path: string) => {
     try {
-      await deleteWorkspaceFile(path);
-      loadWorkspace();
+      await deleteWorkspaceFile(path, true, workspacePath);
+      loadWorkspace(workspacePath);
       // Close tab if open
       setOpenTabs((prev) => prev.filter((t) => t.path !== path));
       if (activeTabPath === path) {
@@ -601,6 +644,21 @@ export default function DodoIDE() {
   // Command Palette Items
   const commands: CommandItem[] = [
     {
+      id: "open_project",
+      label: "File: Open Project Folder...",
+      category: "Project",
+      shortcut: "Ctrl+O",
+      icon: FolderOpen,
+      action: () => setIsOpenProjectOpen(true),
+    },
+    {
+      id: "new_project",
+      label: "File: Create New Project...",
+      category: "Project",
+      icon: FolderPlus,
+      action: () => setIsNewProjectOpen(true),
+    },
+    {
       id: "toggle_terminal",
       label: "View: Toggle Terminal",
       category: "Terminal",
@@ -690,6 +748,8 @@ export default function DodoIDE() {
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
         onOpenQuickOpen={() => setIsQuickOpenOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenProjectModal={() => setIsOpenProjectOpen(true)}
+        onNewProjectModal={() => setIsNewProjectOpen(true)}
       />
 
       {/* 2. MAIN WORKSPACE ROW */}
@@ -732,6 +792,7 @@ export default function DodoIDE() {
                 onOpenFileAtLine={(path, line) => {
                   handleOpenFile(path);
                 }}
+                workspacePath={workspacePath}
               />
             )}
 
@@ -741,6 +802,7 @@ export default function DodoIDE() {
                   handleOpenFile(path);
                   setShowDiff(true);
                 }}
+                workspacePath={workspacePath}
               />
             )}
 
@@ -812,6 +874,8 @@ export default function DodoIDE() {
               showDiff={showDiff}
               onToggleDiff={() => setShowDiff(!showDiff)}
               onTriggerAgentTask={handleCreateTask}
+              onOpenProject={() => setIsOpenProjectOpen(true)}
+              onNewProject={() => setIsNewProjectOpen(true)}
             />
           </div>
 
@@ -913,6 +977,19 @@ export default function DodoIDE() {
           </div>
         </div>
       )}
+
+      {/* Open & New Project Modals */}
+      <OpenProjectModal
+        isOpen={isOpenProjectOpen}
+        onClose={() => setIsOpenProjectOpen(false)}
+        onProjectOpened={handleProjectLoaded}
+      />
+
+      <NewProjectModal
+        isOpen={isNewProjectOpen}
+        onClose={() => setIsNewProjectOpen(false)}
+        onProjectCreated={handleProjectLoaded}
+      />
     </div>
   );
 }

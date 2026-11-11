@@ -12,9 +12,10 @@ interface SearchMatch {
 
 interface SidebarSearchProps {
   onOpenFileAtLine: (path: string, line: number) => void;
+  workspacePath?: string;
 }
 
-export function SidebarSearch({ onOpenFileAtLine }: SidebarSearchProps) {
+export function SidebarSearch({ onOpenFileAtLine, workspacePath }: SidebarSearchProps) {
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [matches, setMatches] = useState<SearchMatch[]>([]);
@@ -26,7 +27,7 @@ export function SidebarSearch({ onOpenFileAtLine }: SidebarSearchProps) {
     setIsSearching(true);
     setSearched(true);
     try {
-      const res = await searchWorkspace(query.trim());
+      const res = await searchWorkspace(query.trim(), "", workspacePath);
       setMatches(res.matches || []);
     } catch (e) {
       console.error(e);

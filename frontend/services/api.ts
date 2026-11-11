@@ -120,22 +120,26 @@ export async function deleteWorkspace(id: string) {
   return res.json();
 }
 
-export async function fetchWorkspaceStatus() {
-  const res = await fetch(`${API_BASE}/api/workspace/status`);
+export async function fetchWorkspaceStatus(workspacePath?: string) {
+  const url = workspacePath
+    ? `${API_BASE}/api/workspace/status?workspace_path=${encodeURIComponent(workspacePath)}`
+    : `${API_BASE}/api/workspace/status`;
+  const res = await fetch(url);
   return res.json();
 }
 
-export async function previewDiff(path: string, proposed_content: string) {
+export async function previewDiff(path: string, proposed_content: string, workspacePath?: string) {
   const res = await fetch(`${API_BASE}/api/workspace/preview-diff`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path, proposed_content }),
+    body: JSON.stringify({ path, proposed_content, workspace_path: workspacePath }),
   });
   return res.json();
 }
 
-export async function searchWorkspace(query: string, subpath: string = "") {
-  const res = await fetch(`${API_BASE}/api/workspace/search?query=${encodeURIComponent(query)}&subpath=${encodeURIComponent(subpath)}`);
+export async function searchWorkspace(query: string, subpath: string = "", workspacePath?: string) {
+  const pathParam = workspacePath ? `&workspace_path=${encodeURIComponent(workspacePath)}` : "";
+  const res = await fetch(`${API_BASE}/api/workspace/search?query=${encodeURIComponent(query)}&subpath=${encodeURIComponent(subpath)}${pathParam}`);
   return res.json();
 }
 
@@ -155,21 +159,27 @@ export async function rollbackCheckpoint(checkpointId: string, workspacePath?: s
   return res.json();
 }
 
-export async function fetchWorkspaceFiles() {
-  const res = await fetch(`${API_BASE}/workspace/files`);
+export async function fetchWorkspaceFiles(workspacePath?: string) {
+  const url = workspacePath
+    ? `${API_BASE}/workspace/files?workspace_path=${encodeURIComponent(workspacePath)}`
+    : `${API_BASE}/workspace/files`;
+  const res = await fetch(url);
   return res.json();
 }
 
-export async function fetchFileContent(path: string) {
-  const res = await fetch(`${API_BASE}/workspace/file?path=${encodeURIComponent(path)}`);
+export async function fetchFileContent(path: string, workspacePath?: string) {
+  const url = workspacePath
+    ? `${API_BASE}/workspace/file?path=${encodeURIComponent(path)}&workspace_path=${encodeURIComponent(workspacePath)}`
+    : `${API_BASE}/workspace/file?path=${encodeURIComponent(path)}`;
+  const res = await fetch(url);
   return res.json();
 }
 
-export async function saveWorkspaceFile(path: string, content: string) {
+export async function saveWorkspaceFile(path: string, content: string, workspacePath?: string) {
   const res = await fetch(`${API_BASE}/workspace/file`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path, content, overwrite: true }),
+    body: JSON.stringify({ path, content, overwrite: true, workspace_path: workspacePath }),
   });
   return res.json();
 }
@@ -476,20 +486,101 @@ export async function createWorkspaceFolder(path: string, workspacePath?: string
   return res.json();
 }
 
-export async function renameWorkspaceFile(oldPath: string, newPath: string, overwrite = false) {
+export async function renameWorkspaceFile(oldPath: string, newPath: string, overwrite = false, workspacePath?: string) {
   const res = await fetch(`${API_BASE}/api/workspace/rename`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ old_path: oldPath, new_path: newPath, overwrite }),
+    body: JSON.stringify({ old_path: oldPath, new_path: newPath, overwrite, workspace_path: workspacePath }),
   });
   return res.json();
 }
 
-export async function deleteWorkspaceFile(path: string, confirmed = true) {
+export async function deleteWorkspaceFile(path: string, confirmed = true, workspacePath?: string) {
   const res = await fetch(`${API_BASE}/api/workspace/delete`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path, confirmed }),
+    body: JSON.stringify({ path, confirmed, workspace_path: workspacePath }),
   });
+  return res.json();
+}
+
+// =============================================================================
+// Project Lifecycle APIs (Open Project, New Project, Recent Projects)
+// =============================================================================
+
+export interface ProjectRecord {
+  id: string;
+  name: string;
+  path: string;
+  description?: string;
+  is_default: boolean;
+  exists_on_disk: boolean;
+  scan_summary?: any;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export async function fetchProjects(): Promise<ProjectRecord[]> {
+  const res = await fetch(`${API_BASE}/api/projects`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch projects list");
+  }
+  return res.json();
+}
+
+export async function fetchQuickPaths(): Promise<Array<{ label: string; path: string; is_default: boolean }>> {
+  const res = await fetch(`${API_BASE}/api/projects/quick-paths`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function openProject(path: string, name?: string) {
+  const res = await fetch(`${API_BASE}/api/projects/open`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path, name }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.detail || `Failed to open project at '${path}'`);
+  }
+  return data;
+}
+
+export async function createProject(data: {
+  name: string;
+  destination_folder: string;
+  template?: string;
+  description?: string;
+  init_git?: boolean;
+}) {
+  const res = await fetch(`${API_BASE}/api/projects/create`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  const resData = await res.json();
+  if (!res.ok) {
+    throw new Error(resData.detail || `Failed to create project '${data.name}'`);
+  }
+  return resData;
+}
+
+export async function fetchProjectDetails(id: string) {
+  const res = await fetch(`${API_BASE}/api/projects/${id}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch project details");
+  }
+  return res.json();
+}
+
+export async function fetchProjectFiles(id: string, depth = 3) {
+  const res = await fetch(`${API_BASE}/api/projects/${id}/files?depth=${depth}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch project files");
+  }
   return res.json();
 }

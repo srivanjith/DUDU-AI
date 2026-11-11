@@ -4,6 +4,8 @@ import React from "react";
 import {
   Layers,
   FolderGit2,
+  FolderOpen,
+  FolderPlus,
   Save,
   Check,
   Bot,
@@ -36,6 +38,8 @@ interface TopNavBarProps {
   onOpenCommandPalette: () => void;
   onOpenQuickOpen: () => void;
   onOpenSettings: () => void;
+  onOpenProjectModal: () => void;
+  onNewProjectModal: () => void;
 }
 
 export function TopNavBar({
@@ -56,6 +60,8 @@ export function TopNavBar({
   onOpenCommandPalette,
   onOpenQuickOpen,
   onOpenSettings,
+  onOpenProjectModal,
+  onNewProjectModal,
 }: TopNavBarProps) {
   const getAgentStatusBadge = () => {
     switch (agentStatus) {
@@ -119,12 +125,37 @@ export function TopNavBar({
         <div className="h-4 w-[1px] bg-slate-800" />
 
         {/* Project Path Indicator */}
-        <div className="flex items-center gap-1.5 text-slate-300 font-medium">
+        <div
+          onClick={onOpenProjectModal}
+          title="Click to switch or open another project"
+          className="flex items-center gap-1.5 text-slate-300 font-medium hover:text-white cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-800/60 transition-colors"
+        >
           <FolderGit2 className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-white font-semibold">{projectName || "workspace"}</span>
-          <span className="text-slate-500 font-mono text-[11px] hidden md:inline truncate max-w-xs" title={workspacePath}>
+          <span className="text-white font-semibold truncate max-w-[130px]">{projectName || "workspace"}</span>
+          <span className="text-slate-500 font-mono text-[11px] hidden lg:inline truncate max-w-[180px]" title={workspacePath}>
             [{workspacePath}]
           </span>
+          <ChevronDown className="w-3 h-3 text-slate-500" />
+        </div>
+
+        {/* Action Buttons: Open Project & New Project */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onOpenProjectModal}
+            title="Open existing project folder (Ctrl+O)"
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 hover:text-white text-slate-300 border border-slate-700 transition-colors"
+          >
+            <FolderOpen className="w-3 h-3 text-amber-400" />
+            <span className="hidden sm:inline">Open</span>
+          </button>
+          <button
+            onClick={onNewProjectModal}
+            title="Create a new starter project"
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-emerald-950/70 hover:bg-emerald-900/90 hover:text-white text-emerald-300 border border-emerald-800/60 transition-colors"
+          >
+            <FolderPlus className="w-3 h-3 text-emerald-400" />
+            <span className="hidden sm:inline">New</span>
+          </button>
         </div>
       </div>
 

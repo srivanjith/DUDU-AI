@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.app.core.config import settings
 from backend.app.database.mongodb import db_manager
 from backend.app.database.indexes import create_database_indexes
-from backend.app.api import health, conversations, tasks, models, workspace, terminal, browser, memory, chat, git
+from backend.app.api import health, conversations, tasks, models, workspace, terminal, browser, memory, chat, git, projects
 
 logging.basicConfig(
     level=logging.INFO,
@@ -66,6 +66,7 @@ app.include_router(terminal.router)
 app.include_router(browser.router)
 app.include_router(memory.router)
 app.include_router(git.router)
+app.include_router(projects.router)
 
 # Mount Static Files for Local App Testing
 static_dir = _PROJECT_ROOT / "static"

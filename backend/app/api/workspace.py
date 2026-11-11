@@ -45,6 +45,7 @@ class SaveFileRequest(BaseModel):
     path: str
     content: str
     overwrite: Optional[bool] = True
+    workspace_path: Optional[str] = None
 
 
 class CreateFolderRequest(BaseModel):
@@ -56,22 +57,26 @@ class EditFileRequest(BaseModel):
     path: str
     target: str
     replacement: str
+    workspace_path: Optional[str] = None
 
 
 class PreviewDiffRequest(BaseModel):
     path: str
     proposed_content: str
+    workspace_path: Optional[str] = None
 
 
 class RenameFileRequest(BaseModel):
     old_path: str
     new_path: str
     overwrite: Optional[bool] = False
+    workspace_path: Optional[str] = None
 
 
 class DeleteFileRequest(BaseModel):
     path: str
     confirmed: bool = True
+    workspace_path: Optional[str] = None
 
 
 # ==============================================================================
@@ -161,9 +166,12 @@ def delete_workspace_registration(workspace_id: str):
 
 @router.get("/workspace/status")
 @router.get("/api/workspace/status")
-def get_workspace_status():
-    default_ws = workspace_repo.get_default_workspace()
-    path = default_ws["path"] if default_ws else str(Path(settings.AUTHORIZED_WORKSPACE_DIR).resolve())
+def get_workspace_status(workspace_path: Optional[str] = None):
+    if workspace_path:
+        path = str(Path(workspace_path).resolve())
+    else:
+        default_ws = workspace_repo.get_default_workspace()
+        path = default_ws["path"] if default_ws else str(Path(settings.AUTHORIZED_WORKSPACE_DIR).resolve())
     scan = project_scanner.scan(path)
     return {
         "authorized_workspace": path,
@@ -178,14 +186,14 @@ def get_workspace_status():
 
 @router.get("/workspace/files")
 @router.get("/api/workspace/files")
-def get_files(subpath: str = "", depth: int = 3):
-    return list_workspace_files(subpath, depth)
+def get_files(subpath: str = "", depth: int = 3, workspace_path: Optional[str] = None):
+    return list_workspace_files(subpath, depth, workspace_root=workspace_path)
 
 
 @router.get("/workspace/file")
 @router.get("/api/workspace/file")
-def get_file_content(path: str, start_line: int = 1, end_line: Optional[int] = None):
-    res = read_file(path, start_line, end_line)
+def get_file_content(path: str, start_line: int = 1, end_line: Optional[int] = None, workspace_path: Optional[str] = None):
+    res = read_file(path, start_line, end_line, workspace_root=workspace_path)
     if "error" in res:
         raise HTTPException(status_code=400, detail=res["error"])
     return res
@@ -194,7 +202,7 @@ def get_file_content(path: str, start_line: int = 1, end_line: Optional[int] = N
 @router.post("/workspace/file")
 @router.post("/api/workspace/file")
 def save_file(req: SaveFileRequest):
-    res = write_file(req.path, req.content, req.overwrite if req.overwrite is not None else True)
+    res = write_file(req.path, req.content, req.overwrite if req.overwrite is not None else True, workspace_root=req.workspace_path)
     if "error" in res:
         raise HTTPException(status_code=400, detail=res["error"])
     return res
@@ -216,7 +224,7 @@ def create_folder(req: CreateFolderRequest):
 @router.post("/workspace/edit")
 @router.post("/api/workspace/edit")
 def apply_edit(req: EditFileRequest):
-    res = edit_file(req.path, req.target, req.replacement)
+    res = edit_file(req.path, req.target, req.replacement, workspace_root=req.workspace_path)
     if "error" in res:
         raise HTTPException(status_code=400, detail=res["error"])
     return res
@@ -225,19 +233,19 @@ def apply_edit(req: EditFileRequest):
 @router.post("/workspace/preview-diff")
 @router.post("/api/workspace/preview-diff")
 def preview_diff(req: PreviewDiffRequest):
-    return preview_changes(req.path, req.proposed_content)
+    return preview_changes(req.path, req.proposed_content, workspace_root=req.workspace_path)
 
 
 @router.get("/workspace/search")
 @router.get("/api/workspace/search")
-def search_in_workspace(query: str = Query(...), subpath: str = "", max_matches: int = 50):
-    return search_files(query, subpath, max_matches)
+def search_in_workspace(query: str = Query(...), subpath: str = "", max_matches: int = 50, workspace_path: Optional[str] = None):
+    return search_files(query, subpath, max_matches, workspace_root=workspace_path)
 
 
 @router.get("/workspace/metadata")
 @router.get("/api/workspace/metadata")
-def get_metadata(path: str = Query(...)):
-    res = file_metadata(path)
+def get_metadata(path: str = Query(...), workspace_path: Optional[str] = None):
+    res = file_metadata(path, workspace_root=workspace_path)
     if "error" in res:
         raise HTTPException(status_code=400, detail=res["error"])
     return res
@@ -246,7 +254,7 @@ def get_metadata(path: str = Query(...)):
 @router.post("/workspace/rename")
 @router.post("/api/workspace/rename")
 def rename_item(req: RenameFileRequest):
-    res = rename_file(req.old_path, req.new_path, req.overwrite or False)
+    res = rename_file(req.old_path, req.new_path, req.overwrite or False, workspace_root=req.workspace_path)
     if "error" in res:
         raise HTTPException(status_code=400, detail=res["error"])
     return res
@@ -255,7 +263,7 @@ def rename_item(req: RenameFileRequest):
 @router.post("/workspace/delete")
 @router.post("/api/workspace/delete")
 def delete_item(req: DeleteFileRequest):
-    res = delete_file(req.path, req.confirmed)
+    res = delete_file(req.path, req.confirmed, workspace_root=req.workspace_path)
     if "error" in res:
         raise HTTPException(status_code=400, detail=res["error"])
     return res
