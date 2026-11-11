@@ -80,6 +80,18 @@ MODEL_CAPABILITY_MATRIX = {
         "vram_required_gb": 0.6,
         "notes": "Local dense embeddings for semantic code retrieval.",
     },
+    "nvidia/nemotron-3-ultra-550b-a55b:free": {
+        "family": "Nemotron",
+        "provider": "OpenRouter",
+        "type": "Cloud",
+        "display_name": "NVIDIA Nemotron 3 Ultra",
+        "parameters": "550B (MoE)",
+        "context_window": 131072,
+        "supports_tools": True,
+        "recommended_role": "reasoning",
+        "vram_required_gb": 0.0,
+        "notes": "State-of-the-art 550B parameter cloud reasoning and coding model via OpenRouter.",
+    },
 }
 
 
@@ -144,9 +156,28 @@ class ModelRegistry:
                 "family": cap.get("family", "Unknown"),
             }
 
+        from backend.app.intelligence.openrouter_client import openrouter_client, NEMOTRON_MODEL_ID
+
+        cloud_models = [
+            {
+                "id": NEMOTRON_MODEL_ID,
+                "name": "NVIDIA Nemotron 3 Ultra",
+                "display_name": "NVIDIA Nemotron 3 Ultra (Cloud • OpenRouter)",
+                "provider": "OpenRouter",
+                "type": "Cloud",
+                "parameters": "550B (MoE)",
+                "context_window": 131072,
+                "supports_tools": True,
+                "is_configured": openrouter_client.is_configured(),
+                "is_free": True,
+                "notes": "State-of-the-art 550B parameter cloud reasoning and coding model via OpenRouter.",
+            }
+        ]
+
         return {
             "installed_models": installed,
             "installed_count": len(installed),
+            "cloud_models": cloud_models,
             "role_mapping": role_map,
             "roles_status": roles_status,
             "hardware_profile": HARDWARE_PROFILE,

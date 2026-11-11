@@ -20,6 +20,14 @@ async def get_system_health() -> Dict[str, Any]:
     """Returns actual operational health of core DODO subsystems."""
     db_health = db_manager.check_health()
     ollama_health = await ollama_client.check_health()
+    from backend.app.intelligence.openrouter_client import openrouter_client, NEMOTRON_MODEL_ID
+    openrouter_status = {
+        "provider": "OpenRouter",
+        "model": NEMOTRON_MODEL_ID,
+        "display_name": "NVIDIA Nemotron 3 Ultra",
+        "is_configured": openrouter_client.is_configured(),
+        "type": "cloud",
+    }
 
     # Check local agent health
     local_agent_status = "offline"
@@ -45,6 +53,7 @@ async def get_system_health() -> Dict[str, Any]:
         },
         "database": db_health,
         "inference_engine": ollama_health,
+        "openrouter": openrouter_status,
         "local_agent": {
             "status": local_agent_status,
             "host": settings.LOCAL_AGENT_HOST,

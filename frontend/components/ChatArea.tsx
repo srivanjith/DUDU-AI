@@ -139,18 +139,19 @@ export function ChatArea({
             className="bg-slate-800 text-xs text-slate-200 border border-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500 font-medium cursor-pointer"
           >
             <option value="auto">Auto Router (Hardware Aware)</option>
-            {availableModels.map((m) => (
-              <option key={m} value={m}>
-                {m} (Installed)
+            <optgroup label="Local Models (Ollama)">
+              <option value="qwen2.5-coder:1.5b">Qwen2.5-Coder 1.5B (Local • Ollama)</option>
+              {availableModels.filter(m => m !== "qwen2.5-coder:1.5b" && !m.includes("nemotron")).map((m) => (
+                <option key={m} value={m}>
+                  {m} (Installed)
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Cloud Models (OpenRouter)">
+              <option value="nvidia/nemotron-3-ultra-550b-a55b:free">
+                NVIDIA Nemotron 3 Ultra (Cloud • OpenRouter)
               </option>
-            ))}
-            {availableModels.length === 0 && (
-              <>
-                <option value="qwen2.5-coder:7b">qwen2.5-coder:7b (Target - 4GB)</option>
-                <option value="llama3.2:1b">llama3.2:1b (Target - Fast)</option>
-                <option value="deepseek-r1:8b">deepseek-r1:8b (Target - Reasoning)</option>
-              </>
-            )}
+            </optgroup>
           </select>
         </div>
       </div>

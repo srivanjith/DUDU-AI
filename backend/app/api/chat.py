@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from backend.app.database.repositories.conversation_repository import ConversationRepository, MessageRepository
 from backend.app.database.repositories.model_repository import ModelRepository
 from backend.app.intelligence.ollama_client import ollama_client
+from backend.app.intelligence.openrouter_client import openrouter_client, NEMOTRON_MODEL_ID
 from backend.app.model_router.model_router import model_router
 
 logger = logging.getLogger("dodo.api.chat")
@@ -113,7 +114,7 @@ async def chat_completion(req: ChatCompletionRequest):
         start_time = time.perf_counter()
 
         # Emit routing metadata event
-        yield f"data: {json.dumps({'type': 'routing', 'conversation_id': conv_id, 'model': selected_model, 'role': route_result.role, 'reason': route_result.reason, 'is_installed': route_result.is_installed, 'hardware_fit': route_result.hardware_fit})}\n\n"
+        yield f"data: {json.dumps({'type': 'routing', 'conversation_id': conv_id, 'model': selected_model, 'role': route_result.role, 'reason': route_result.reason, 'is_installed': route_result.is_installed, 'hardware_fit': route_result.hardware_fit, 'provider': getattr(route_result, 'provider', 'Ollama')})}\n\n"
 
         # Emit memory telemetry events
         if memory_categories:
@@ -123,11 +124,17 @@ async def chat_completion(req: ChatCompletionRequest):
 
         options = {"temperature": req.temperature or 0.3}
 
-        async for chunk in ollama_client.chat_stream(selected_model, messages_payload, options=options):
+        # Route to OpenRouter cloud or Ollama local
+        if getattr(route_result, "provider", "") == "OpenRouter" or selected_model == NEMOTRON_MODEL_ID:
+            stream_gen = openrouter_client.chat_stream(selected_model, messages_payload, options=options)
+        else:
+            stream_gen = ollama_client.chat_stream(selected_model, messages_payload, options=options)
+
+        async for chunk in stream_gen:
             if "error" in chunk:
                 has_error = True
                 error_details = chunk["error"]
-                yield f"data: {json.dumps({'type': 'error', 'error': error_details, 'error_code': chunk.get('error_code'), 'model': selected_model})}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'error': error_details, 'error_code': chunk.get('error_code'), 'model': selected_model, 'can_fallback_to_qwen': chunk.get('can_fallback_to_qwen', False)})}\n\n"
                 break
 
             token = chunk.get("content", "")
@@ -224,9 +231,14 @@ async def websocket_chat_endpoint(websocket: WebSocket, conversation_id: str):
             accumulated = []
             cancelled = False
 
-            async for chunk in ollama_client.chat_stream(model_to_use, formatted):
+            if getattr(route_res, "provider", "") == "OpenRouter" or model_to_use == NEMOTRON_MODEL_ID:
+                stream_gen = openrouter_client.chat_stream(model_to_use, formatted)
+            else:
+                stream_gen = ollama_client.chat_stream(model_to_use, formatted)
+
+            async for chunk in stream_gen:
                 if "error" in chunk:
-                    await websocket.send_json({"type": "error", "error": chunk["error"]})
+                    await websocket.send_json({"type": "error", "error": chunk["error"], "can_fallback_to_qwen": chunk.get("can_fallback_to_qwen", False)})
                     msg_repo.add_message(conversation_id, role="assistant", content=f"⚠️ {chunk['error']}", model_used=model_to_use, generation_status="error")
                     break
 

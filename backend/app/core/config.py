@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     DEFAULT_REASONING_MODEL: str = "deepseek-r1:8b"
     DEFAULT_LIGHTWEIGHT_MODEL: str = "llama3.2:1b"
     DEFAULT_EMBEDDING_MODEL: str = "nomic-embed-text"
+
+    # OpenRouter / Cloud AI Inference (NVIDIA Nemotron 3 Ultra)
+    OPENROUTER_API_KEY: Optional[str] = None
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_MODEL: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
+    OPENROUTER_TIMEOUT_SECONDS: int = 120
+    ALLOW_CLOUD_INFERENCE: bool = True
 
     # Local Agent
     LOCAL_AGENT_HOST: str = "127.0.0.1"

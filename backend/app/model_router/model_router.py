@@ -15,6 +15,7 @@ class TaskClassificationResult:
         reason: str,
         is_installed: bool = False,
         hardware_fit: str = "optimal",
+        provider: str = "Ollama",
     ):
         self.task_type = task_type
         self.complexity = complexity
@@ -23,6 +24,7 @@ class TaskClassificationResult:
         self.reason = reason
         self.is_installed = is_installed
         self.hardware_fit = hardware_fit
+        self.provider = provider
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -33,6 +35,7 @@ class TaskClassificationResult:
             "reason": self.reason,
             "is_installed": self.is_installed,
             "hardware_fit": self.hardware_fit,
+            "provider": self.provider,
         }
 
 
@@ -95,7 +98,22 @@ class ModelRouter:
         installed = await ollama_client.list_models()
         installed_names = [m.get("name", "") for m in installed]
 
+        from backend.app.intelligence.openrouter_client import openrouter_client, NEMOTRON_MODEL_ID
+
         if requested_model and requested_model != "auto":
+            if requested_model == NEMOTRON_MODEL_ID or "nemotron" in requested_model.lower():
+                is_cfg = openrouter_client.is_configured()
+                return TaskClassificationResult(
+                    task_type="cloud_inference",
+                    complexity="high",
+                    selected_model=NEMOTRON_MODEL_ID,
+                    role="reasoning",
+                    reason="User explicitly selected NVIDIA Nemotron 3 Ultra (Cloud • OpenRouter).",
+                    is_installed=is_cfg,
+                    hardware_fit="Cloud Hosted (0% local VRAM)",
+                    provider="OpenRouter",
+                )
+
             is_present = any(requested_model in n or n.startswith(f"{requested_model}:") for n in installed_names)
             cap = MODEL_CAPABILITY_MATRIX.get(requested_model, {})
             vram_req = cap.get("vram_required_gb", 4.0)
@@ -108,10 +126,27 @@ class ModelRouter:
                 reason=f"User explicitly selected '{requested_model}'.",
                 is_installed=is_present,
                 hardware_fit=fit,
+                provider="Ollama",
             )
 
         task_type = self.classify_task(prompt)
         complexity = self.estimate_complexity(prompt, task_type)
+
+        # Cloud routing rule: Complex reasoning with explicit cloud permission
+        if task_type == "reasoning" and settings.ALLOW_CLOUD_INFERENCE and openrouter_client.is_configured():
+            from backend.app.core.security import SECRET_PATTERNS
+            has_secret = any(re.search(pat, prompt) for pat in SECRET_PATTERNS)
+            if not has_secret and ".env" not in prompt:
+                return TaskClassificationResult(
+                    task_type=task_type,
+                    complexity=complexity,
+                    selected_model=NEMOTRON_MODEL_ID,
+                    role="reasoning",
+                    reason="Auto-routed complex reasoning task to cloud NVIDIA Nemotron 3 Ultra (550B MoE).",
+                    is_installed=True,
+                    hardware_fit="Cloud Hosted (0% local VRAM)",
+                    provider="OpenRouter",
+                )
 
         role_map = {
             "lightweight": "lightweight",

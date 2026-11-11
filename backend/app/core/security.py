@@ -27,9 +27,10 @@ def redact_secrets(text: str) -> str:
     """Redact sensitive credentials, keys, and tokens from text before logging or storing."""
     if not text:
         return text
-    redacted = text
-    for pattern in SECRET_PATTERNS:
-        redacted = re.sub(pattern, r"\1***REDACTED***\4" if r"\4" in pattern else r"\1=***REDACTED***", redacted)
+    # 1. MongoDB URI credentials: mongodb(+srv)://user:password@host
+    redacted = re.sub(r"(?i)(mongodb(?:\+srv)?:\/\/[^:\s]+:)[^@]+(@)", r"\1***REDACTED***\2", text)
+    # 2. Key-value secrets: api_key=..., password=...
+    redacted = re.sub(r"(?i)(api[_-]?key|secret|password|token|bearer|private[_-]?key)\s*[:=]\s*['\"]?([a-zA-Z0-9_\-\.]{4,})['\"]?", r"\1=***REDACTED***", redacted)
     return redacted
 
 

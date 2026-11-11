@@ -24,9 +24,19 @@ async def get_models():
 @router.get("/api/models/status")
 async def get_models_status():
     """Returns actual operational connectivity to Ollama inference daemon and hardware capacity."""
+    from backend.app.intelligence.openrouter_client import openrouter_client, NEMOTRON_MODEL_ID
     health = await ollama_client.check_health()
     return {
         "ollama": health,
+        "openrouter": {
+            "status": "configured" if openrouter_client.is_configured() else "unconfigured",
+            "base_url": openrouter_client.base_url,
+            "model": NEMOTRON_MODEL_ID,
+            "display_name": "NVIDIA Nemotron 3 Ultra",
+            "provider": "OpenRouter",
+            "type": "Cloud",
+            "is_free": True,
+        },
         "hardware": HARDWARE_PROFILE,
         "recommended_models": MODEL_CAPABILITY_MATRIX,
     }

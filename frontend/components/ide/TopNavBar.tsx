@@ -210,16 +210,21 @@ export function TopNavBar({
             className="bg-transparent text-slate-200 focus:outline-none cursor-pointer pr-1 text-[11px]"
           >
             <option value="auto" className="bg-slate-900 text-white">Auto Router (Hardware Aware)</option>
-            {(availableModels || []).map((m) => (
-              <option key={m} value={m} className="bg-slate-900 text-white">
-                {m} (Local Ollama)
-              </option>
-            ))}
-            {!(availableModels || []).includes("qwen2.5-coder:1.5b") && (
+            <optgroup label="Local Models (Ollama)" className="bg-slate-900 text-slate-400 font-semibold">
               <option value="qwen2.5-coder:1.5b" className="bg-slate-900 text-white">
-                qwen2.5-coder:1.5b (Default)
+                Qwen2.5-Coder 1.5B (Local • Ollama)
               </option>
-            )}
+              {(availableModels || []).filter(m => m !== "qwen2.5-coder:1.5b" && !m.includes("nemotron")).map((m) => (
+                <option key={m} value={m} className="bg-slate-900 text-white">
+                  {m} (Local Ollama)
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Cloud Models (OpenRouter)" className="bg-slate-900 text-slate-400 font-semibold">
+              <option value="nvidia/nemotron-3-ultra-550b-a55b:free" className="bg-slate-900 text-emerald-400">
+                NVIDIA Nemotron 3 Ultra (Cloud • OpenRouter)
+              </option>
+            </optgroup>
           </select>
         </div>
 
