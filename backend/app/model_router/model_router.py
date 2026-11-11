@@ -47,6 +47,17 @@ class ModelRouter:
     Never silently falls back to cloud AI services.
     """
 
+    VISION_KEYWORDS = [
+        "screenshot", "visual", "ui inspection", "viewport", "layout defect",
+        "responsive check", "image analysis", "visual bug", "visual analysis"
+    ]
+
+    COMPLEX_CODING_KEYWORDS = [
+        "full-stack", "fullstack", "e-commerce", "ecommerce", "system architecture",
+        "next.js", "architect", "multi-file", "complete application", "from scratch",
+        "admin dashboard", "checkout workflow"
+    ]
+
     CODING_KEYWORDS = [
         "code", "function", "class", "react", "fastapi", "python", "javascript",
         "typescript", "mongodb", "database", "api", "endpoint", "bug", "error",
@@ -61,13 +72,21 @@ class ModelRouter:
     LIGHTWEIGHT_EXACT = ["hi", "hello", "hey", "ping", "test", "ok", "yes", "no", "thanks", "thank you"]
 
     def classify_task(self, prompt: str) -> str:
-        """Classifies incoming task into general, coding, reasoning, or lightweight."""
+        """Classifies incoming task into vision, complex_architecture, reasoning, coding, or lightweight."""
         prompt_lower = prompt.lower().strip()
 
         if prompt_lower in self.LIGHTWEIGHT_EXACT or (len(prompt.split()) <= 2 and not any(kw in prompt_lower for kw in self.CODING_KEYWORDS)):
             return "lightweight"
 
-        # Check for complex planning / reasoning
+        # 1. Vision & UI Screenshot Understanding
+        if any(kw in prompt_lower for kw in self.VISION_KEYWORDS):
+            return "vision"
+
+        # 2. Complex Full-Stack Architecture & Planning
+        if any(kw in prompt_lower for kw in self.COMPLEX_CODING_KEYWORDS):
+            return "complex_architecture"
+
+        # 3. Reasoning & Architecture Planning
         reasoning_score = sum(1 for kw in self.REASONING_KEYWORDS if kw in prompt_lower)
         coding_score = sum(1 for kw in self.CODING_KEYWORDS if kw in prompt_lower)
 
@@ -80,27 +99,45 @@ class ModelRouter:
     def estimate_complexity(self, prompt: str, task_type: str) -> str:
         """Estimates task complexity: low, medium, or high."""
         word_count = len(prompt.split())
-        if task_type == "reasoning" or word_count > 100 or "full stack" in prompt.lower() or "from scratch" in prompt.lower():
+        if task_type in ["complex_architecture", "reasoning"] or word_count > 60 or "full stack" in prompt.lower() or "from scratch" in prompt.lower():
             return "high"
-        if task_type == "coding" or word_count > 30:
+        if task_type in ["coding", "vision"] or word_count > 25:
             return "medium"
         return "low"
 
     async def route(self, prompt: str, requested_model: Optional[str] = None) -> TaskClassificationResult:
         """
-        Executes routing workflow:
+        Executes high-performance routing workflow:
         1. If user explicitly requested a model, verify its presence.
-        2. Otherwise classify task intent and estimate complexity.
-        3. Match to configured role model.
-        4. Cross-check against installed Ollama models.
-        5. Evaluate hardware VRAM fit.
+        2. Visual screenshot understanding -> Nemotron Super VL (Cloud OpenRouter).
+        3. Complex full-stack / architecture -> Nemotron 3 Ultra (Cloud OpenRouter).
+        4. Simple coding / quick bug fixes -> Qwen2.5-Coder (Local Ollama).
+        5. Preserves local-only mode and requires cloud consent.
         """
         installed = await ollama_client.list_models()
         installed_names = [m.get("name", "") for m in installed]
 
-        from backend.app.intelligence.openrouter_client import openrouter_client, NEMOTRON_MODEL_ID
+        from backend.app.intelligence.openrouter_client import (
+            openrouter_client,
+            NEMOTRON_MODEL_ID,
+            NEMOTRON_SUPER_VL_ID,
+        )
 
+        # Explicit user selection
         if requested_model and requested_model != "auto":
+            if requested_model in [NEMOTRON_SUPER_VL_ID, "nemotron-super-vl"] or "super-vl" in requested_model.lower():
+                is_cfg = openrouter_client.is_configured()
+                return TaskClassificationResult(
+                    task_type="visual_understanding",
+                    complexity="high",
+                    selected_model=NEMOTRON_SUPER_VL_ID,
+                    role="vision",
+                    reason="User explicitly selected NVIDIA Nemotron Super VL (Visual AI).",
+                    is_installed=is_cfg,
+                    hardware_fit="Cloud Hosted (0% local VRAM)",
+                    provider="OpenRouter",
+                )
+
             if requested_model == NEMOTRON_MODEL_ID or "nemotron" in requested_model.lower():
                 is_cfg = openrouter_client.is_configured()
                 return TaskClassificationResult(
@@ -132,8 +169,21 @@ class ModelRouter:
         task_type = self.classify_task(prompt)
         complexity = self.estimate_complexity(prompt, task_type)
 
-        # Cloud routing rule: Complex reasoning with explicit cloud permission
-        if task_type == "reasoning" and settings.ALLOW_CLOUD_INFERENCE and openrouter_client.is_configured():
+        # Rule 1: Visual screenshot understanding -> Nemotron Super VL
+        if task_type == "vision" and settings.ALLOW_CLOUD_INFERENCE and openrouter_client.is_configured():
+            return TaskClassificationResult(
+                task_type="vision",
+                complexity=complexity,
+                selected_model=NEMOTRON_SUPER_VL_ID,
+                role="vision",
+                reason="Auto-routed visual screenshot analysis to NVIDIA Nemotron Super VL.",
+                is_installed=True,
+                hardware_fit="Cloud Hosted (0% local VRAM)",
+                provider="OpenRouter",
+            )
+
+        # Rule 2: Complex full-stack development & architecture planning -> Nemotron Ultra
+        if task_type in ["complex_architecture", "reasoning"] and settings.ALLOW_CLOUD_INFERENCE and openrouter_client.is_configured():
             from backend.app.core.security import SECRET_PATTERNS
             has_secret = any(re.search(pat, prompt) for pat in SECRET_PATTERNS)
             if not has_secret and ".env" not in prompt:
@@ -142,24 +192,27 @@ class ModelRouter:
                     complexity=complexity,
                     selected_model=NEMOTRON_MODEL_ID,
                     role="reasoning",
-                    reason="Auto-routed complex reasoning task to cloud NVIDIA Nemotron 3 Ultra (550B MoE).",
+                    reason="Auto-routed complex full-stack / architecture task to NVIDIA Nemotron 3 Ultra (550B MoE).",
                     is_installed=True,
                     hardware_fit="Cloud Hosted (0% local VRAM)",
                     provider="OpenRouter",
                 )
 
+        # Rule 3: Simple coding tasks & quick bug fixes -> Qwen local
         role_map = {
             "lightweight": "lightweight",
             "general": "general",
             "coding": "coding",
-            "reasoning": "reasoning",
+            "reasoning": "coding",  # fallback to local coding model if cloud disabled
+            "complex_architecture": "coding",
+            "vision": "general",
         }
-        target_role = role_map.get(task_type, "general")
+        target_role = role_map.get(task_type, "coding")
         configured_model = model_registry.get_model_for_role(target_role)
 
         selected_model = configured_model
         is_installed = any(configured_model in name or name.startswith(f"{configured_model}:") for name in installed_names)
-        reason = f"Routed to {target_role} model '{configured_model}' based on {task_type} intent ({complexity} complexity)."
+        reason = f"Routed to local {target_role} model '{configured_model}' ({complexity} complexity)."
 
         # If configured model is not installed but another model is installed, gracefully select best installed
         if not is_installed and installed_names:

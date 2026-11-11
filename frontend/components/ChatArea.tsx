@@ -151,6 +151,9 @@ export function ChatArea({
               <option value="nvidia/nemotron-3-ultra-550b-a55b:free">
                 NVIDIA Nemotron 3 Ultra (Cloud • OpenRouter)
               </option>
+              <option value="nvidia/nemotron-super-vl">
+                NVIDIA Nemotron Super VL (Vision • OpenRouter)
+              </option>
             </optgroup>
           </select>
         </div>

@@ -221,6 +221,22 @@ async def browser_close_tab(tab_id: str) -> Dict[str, Any]:
 # 6. Legacy Compatibility Wrappers
 # ==============================================================================
 
+@tool_registry.register(ToolDefinition(
+    name="browser_validate_responsive",
+    description="Validates web application responsiveness across 5 viewports: mobile (375x812, 390x844), tablet (768x1024), desktop (1366x768), and large desktop (1920x1080). Detects horizontal overflow, layout defects, and captures screenshots.",
+    permission_level=PermissionLevel.READ,
+    risk_level=RiskLevel.LOW,
+    parameters=[
+        ToolParameter(name="url", type="string", description="URL to validate (e.g. http://127.0.0.1:8000/static/index.html)"),
+        ToolParameter(name="workspace_dir", type="string", description="Workspace root directory to save viewport screenshots", required=False),
+        ToolParameter(name="save_screenshots", type="boolean", description="Whether to capture and persist PNG screenshots for each viewport", required=False, default=True),
+    ]
+))
+async def browser_validate_responsive(url: str, workspace_dir: Optional[str] = None, save_screenshots: bool = True) -> Dict[str, Any]:
+    from backend.app.browser.responsive_validator import responsive_validator
+    return await responsive_validator.validate_url(url=url, workspace_dir=workspace_dir, save_screenshots=save_screenshots)
+
+
 async def open_and_inspect_page(url: str, wait_ms: int = 2000) -> Dict[str, Any]:
     """Legacy helper: opens URL, waits, returns diagnostics and screenshot."""
     nav_res = await browser_engine.navigate(url)

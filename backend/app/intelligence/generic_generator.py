@@ -352,7 +352,7 @@ export default function App() {{
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = typeof window !== "undefined" && window.location && window.location.origin ? (window.location.origin + "/api") : "http://127.0.0.1:8000/api";
+  const API_URL = "http://127.0.0.1:8000/api";
 
   const loadItems = async () => {{
     setLoading(true);
@@ -433,6 +433,7 @@ export default function App() {{
           </div>
         )}}
 
+        {/* Dashboard Metric Cards */}
         <div className="grid grid-cols-3 gap-4">
           <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl">
             <span className="text-xs text-slate-400 uppercase font-semibold">Total {entity_plural}</span>
@@ -452,6 +453,7 @@ export default function App() {{
           </div>
         </div>
 
+        {/* Create Item Form */}
         <form onSubmit={{handleCreate}} className="p-4 bg-slate-900 border border-slate-800 rounded-xl space-y-3">
           <h3 className="text-xs font-bold text-white uppercase">Add New {entity}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -482,6 +484,7 @@ export default function App() {{
           </button>
         </form>
 
+        {/* Filter & Search Toolbar */}
         <div className="flex items-center gap-3">
           <input
             id="search-input"
@@ -504,6 +507,7 @@ export default function App() {{
           </select>
         </div>
 
+        {/* Items List */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden" id="items-container">
           {{loading ? (
             <div className="p-8 text-center text-slate-500 text-xs">Loading {table_name}...</div>
@@ -549,7 +553,7 @@ export default function App() {{
   <div id="root"></div>
   <script type="module">
     // Direct browser runtime for static preview
-    const API_URL = typeof window !== "undefined" && window.location && window.location.origin ? (window.location.origin + "/api") : "http://127.0.0.1:8000/api";
+    const API_URL = "http://127.0.0.1:8000/api";
     async function init() {{
       const res = await fetch(`${{API_URL}}/{table_name}`);
       const data = await res.json();
@@ -647,62 +651,6 @@ pytest>=7.4.0
 httpx>=0.25.0
 """
 
-    package_json = f"""{{
-  "name": "{table_name}-frontend",
-  "private": true,
-  "version": "1.0.0",
-  "type": "module",
-  "scripts": {{
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  }},
-  "dependencies": {{
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  }},
-  "devDependencies": {{
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "typescript": "^5.2.2"
-  }}
-}}
-"""
-
-    tsconfig_json = """{
-  "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
-  },
-  "include": ["src"]
-}
-"""
-
-    types_ts = f"""export interface {entity} {{
-  id: string;
-  {title_field}: string;
-  description?: string;
-  status: string;
-  priority?: string;
-  assignee?: string;
-  created_at: string;
-  updated_at: string;
-}}
-"""
-
     readme_md = f"""# DODO {entity} Management System
 Full-stack {entity} Management application built autonomously by DODO IDE.
 - React + TypeScript Frontend
@@ -718,11 +666,9 @@ Full-stack {entity} Management application built autonomously by DODO IDE.
         "backend/app/routes.py": routes_py,
         "backend/main.py": main_py,
         "frontend/src/App.tsx": react_app_tsx,
-        "frontend/src/types/index.ts": types_ts,
-        "frontend/package.json": package_json,
-        "frontend/tsconfig.json": tsconfig_json,
         "frontend/index.html": index_html,
         "tests/test_api.py": test_api_py,
         "requirements.txt": requirements_txt,
         "README.md": readme_md,
     }
+

@@ -224,6 +224,9 @@ export function TopNavBar({
               <option value="nvidia/nemotron-3-ultra-550b-a55b:free" className="bg-slate-900 text-emerald-400">
                 NVIDIA Nemotron 3 Ultra (Cloud • OpenRouter)
               </option>
+              <option value="nvidia/nemotron-super-vl" className="bg-slate-900 text-purple-400">
+                NVIDIA Nemotron Super VL (Vision • OpenRouter)
+              </option>
             </optgroup>
           </select>
         </div>

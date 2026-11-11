@@ -151,6 +151,11 @@ class ExecutionEngine:
                 elif step.tool_name == "browser_screenshot":
                     saved_to = res.get("saved_path") or "in-memory base64 preview"
                     obs = f"[Real Browser Screenshot Captured] Render verified ({res.get('bytes_length', 0)} bytes). Saved to: {saved_to}."
+                elif step.tool_name == "browser_validate_responsive":
+                    raw_res = res.get("result", {}) if isinstance(res.get("result"), dict) else res
+                    passed = raw_res.get("passed_viewports", "0/5")
+                    defects_c = raw_res.get("total_defects_count", 0)
+                    obs = f"[Real Browser 5-Viewport Audit Observed] Passed Viewports: {passed} | Layout Defects: {defects_c} | All Passed: {raw_res.get('all_viewports_passed')}. Full responsive screenshot evidence captured."
                 else:
                     obs = f"[Observed] Tool '{step.tool_name}' executed: {res.get('result', '')}"
                 return StepExecutionResult(step_id=step.step_id, success=True, observation=obs, duration_ms=duration_ms)

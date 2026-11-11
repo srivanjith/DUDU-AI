@@ -92,6 +92,18 @@ MODEL_CAPABILITY_MATRIX = {
         "vram_required_gb": 0.0,
         "notes": "State-of-the-art 550B parameter cloud reasoning and coding model via OpenRouter.",
     },
+    "nvidia/nemotron-super-vl": {
+        "family": "Nemotron",
+        "provider": "OpenRouter",
+        "type": "Cloud",
+        "display_name": "NVIDIA Nemotron Super VL",
+        "parameters": "Vision-Language",
+        "context_window": 131072,
+        "supports_tools": True,
+        "recommended_role": "vision",
+        "vram_required_gb": 0.0,
+        "notes": "Visual multimodal model for screenshot understanding and responsive UI layout validation.",
+    },
 }
 
 
@@ -156,7 +168,7 @@ class ModelRegistry:
                 "family": cap.get("family", "Unknown"),
             }
 
-        from backend.app.intelligence.openrouter_client import openrouter_client, NEMOTRON_MODEL_ID
+        from backend.app.intelligence.openrouter_client import openrouter_client, NEMOTRON_MODEL_ID, NEMOTRON_SUPER_VL_ID
 
         cloud_models = [
             {
@@ -171,6 +183,19 @@ class ModelRegistry:
                 "is_configured": openrouter_client.is_configured(),
                 "is_free": True,
                 "notes": "State-of-the-art 550B parameter cloud reasoning and coding model via OpenRouter.",
+            },
+            {
+                "id": NEMOTRON_SUPER_VL_ID,
+                "name": "NVIDIA Nemotron Super VL",
+                "display_name": "NVIDIA Nemotron Super VL (Cloud • OpenRouter)",
+                "provider": "OpenRouter",
+                "type": "Cloud",
+                "parameters": "Vision-Language",
+                "context_window": 131072,
+                "supports_tools": True,
+                "is_configured": openrouter_client.is_configured(),
+                "is_free": True,
+                "notes": "Visual multimodal model for screenshot understanding and responsive UI layout validation.",
             }
         ]
 

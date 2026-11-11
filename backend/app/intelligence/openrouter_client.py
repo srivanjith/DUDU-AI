@@ -16,6 +16,7 @@ import re
 import time
 from typing import Any, AsyncGenerator, Callable, Dict, List, Optional, Tuple
 import httpx
+import os
 
 from backend.app.core.config import settings
 from backend.app.core.security import redact_secrets
@@ -24,6 +25,7 @@ from backend.app.tools.registry import tool_registry
 logger = logging.getLogger("dodo.intelligence.openrouter")
 
 NEMOTRON_MODEL_ID = "nvidia/nemotron-3-ultra-550b-a55b:free"
+NEMOTRON_SUPER_VL_ID = "nvidia/nemotron-super-vl"
 
 
 class OpenRouterError(Exception):
@@ -85,17 +87,20 @@ class OpenRouterClient:
     def sanitize_messages_for_cloud(
         self,
         messages: List[Dict[str, Any]],
-        cloud_consent: bool = True
+        cloud_consent: bool = True,
+        model: Optional[str] = None,
     ) -> Tuple[List[Dict[str, Any]], List[str]]:
         """
         Applies privacy guard before cloud transmission:
         1. Redacts secrets (passwords, tokens, database URIs, API keys).
         2. Blocks/redacts any '.env' or credential blocks.
-        3. Strips image and video inputs (Nemotron 3 Ultra is text-only).
-        4. Returns sanitized messages and a list of redaction notices.
+        3. Preserves image/screenshot blocks for vision models (Nemotron Super VL).
+        4. Strips media for text-only models (Nemotron 3 Ultra).
+        5. Returns sanitized messages and a list of redaction notices.
         """
         sanitized = []
         notices = []
+        is_vision_model = bool(model and ("vl" in model.lower() or "vision" in model.lower()))
 
         # Prohibited patterns that must never reach a third-party cloud endpoint
         prohibited_indicators = [
@@ -110,19 +115,36 @@ class OpenRouterClient:
             role = m.get("role", "user")
             content = m.get("content", "")
 
-            # If content is a list of blocks (multimodal format), enforce text-only
+            # If content is a list of blocks (multimodal format)
             if isinstance(content, list):
-                text_parts = []
-                for part in content:
-                    if isinstance(part, dict):
-                        if part.get("type") == "text":
-                            text_parts.append(part.get("text", ""))
-                        elif part.get("type") in ["image_url", "image", "video"]:
-                            notices.append(f"Omitted non-text {part.get('type')} block (Nemotron 3 Ultra is text-only).")
-                            text_parts.append("[Non-text media omitted: Model is text-only]")
-                    elif isinstance(part, str):
-                        text_parts.append(part)
-                content = "\n".join(text_parts)
+                if is_vision_model:
+                    # Vision model: sanitize text parts, keep image parts
+                    processed_parts = []
+                    for part in content:
+                        if isinstance(part, dict) and part.get("type") == "text":
+                            t = part.get("text", "")
+                            for pattern in prohibited_indicators:
+                                if re.search(pattern, t, re.IGNORECASE):
+                                    notices.append("Redacted sensitive environment/private key configuration from outgoing cloud prompt.")
+                                    t = re.sub(pattern, "[SENSITIVE CREDENTIAL REDACTED BY DODO PRIVACY GUARD]", t, flags=re.IGNORECASE)
+                            t = redact_secrets(t)
+                            processed_parts.append({"type": "text", "text": t})
+                        else:
+                            processed_parts.append(part)
+                    sanitized.append({"role": role, "content": processed_parts})
+                    continue
+                else:
+                    text_parts = []
+                    for part in content:
+                        if isinstance(part, dict):
+                            if part.get("type") == "text":
+                                text_parts.append(part.get("text", ""))
+                            elif part.get("type") in ["image_url", "image", "video"]:
+                                notices.append(f"Omitted non-text {part.get('type')} block (Nemotron 3 Ultra is text-only).")
+                                text_parts.append("[Non-text media omitted: Model is text-only]")
+                        elif isinstance(part, str):
+                            text_parts.append(part)
+                    content = "\n".join(text_parts)
 
             if not isinstance(content, str):
                 content = str(content)
