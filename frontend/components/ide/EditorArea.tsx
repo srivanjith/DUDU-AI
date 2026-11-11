@@ -73,7 +73,7 @@ export function EditorArea({
       {/* Tab Bar */}
       <div className="h-9 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-2 overflow-x-auto text-xs">
         <div className="flex items-center gap-0.5 overflow-x-auto max-w-[calc(100%-140px)]">
-          {openTabs.map((tab) => {
+          {(openTabs || []).map((tab) => {
             const isActive = tab.path === activeTabPath;
             const tabDirty = tab.originalContent !== tab.currentContent;
             const fileName = tab.path.split("/").pop() || tab.path;

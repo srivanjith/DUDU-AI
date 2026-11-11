@@ -249,9 +249,9 @@ export function NewProjectModal({ isOpen, onClose, onProjectCreated }: NewProjec
                 {targetPathPreview}
               </span>
             </div>
-            {quickPaths.length > 0 && (
+            {(quickPaths || []).length > 0 && (
               <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                {quickPaths.map((qp) => (
+                {(quickPaths || []).map((qp) => (
                   <button
                     key={qp.path}
                     type="button"
@@ -386,3 +386,4 @@ export function NewProjectModal({ isOpen, onClose, onProjectCreated }: NewProjec
     </div>
   );
 }
+

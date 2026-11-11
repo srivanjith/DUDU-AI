@@ -345,7 +345,7 @@ export function MemoryCenter() {
               className="bg-slate-950 border border-slate-800 text-xs text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-purple-500"
             >
               <option value="all">All Projects</option>
-              {projects.map((p) => (
+              {(projects || []).map((p) => (
                 <option key={p} value={p}>
                   {p}
                 </option>
@@ -369,7 +369,7 @@ export function MemoryCenter() {
               <RefreshCw className="w-4 h-4 animate-spin text-purple-400" />
               <span>Loading persistent memories from database store...</span>
             </div>
-          ) : memories.length === 0 ? (
+          ) : (memories || []).length === 0 ? (
             <div className="text-center py-16 border border-dashed border-slate-800 rounded-2xl p-8 bg-slate-900/20">
               <Brain className="w-10 h-10 text-slate-600 mx-auto mb-3" />
               <h3 className="text-sm font-semibold text-slate-300">No Memories Found</h3>
@@ -379,7 +379,7 @@ export function MemoryCenter() {
               </p>
             </div>
           ) : (
-            memories.map((mem) => {
+            (memories || []).map((mem) => {
               const cfg = CATEGORY_CONFIG[mem.category] || CATEGORY_CONFIG.conversation;
               const Icon = cfg.icon;
 

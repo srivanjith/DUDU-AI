@@ -812,10 +812,10 @@ export default function DodoIDE() {
                   Autonomous Agent Runs
                 </span>
                 <div className="space-y-1.5 mt-2">
-                  {tasks.length === 0 ? (
+                  {(tasks || []).length === 0 ? (
                     <div className="text-slate-500 italic p-2 text-center">No runs recorded yet.</div>
                   ) : (
-                    tasks.map((t) => (
+                    (tasks || []).map((t) => (
                       <div
                         key={t.id}
                         onClick={() => {

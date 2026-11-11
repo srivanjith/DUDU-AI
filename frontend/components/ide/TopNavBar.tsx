@@ -210,12 +210,12 @@ export function TopNavBar({
             className="bg-transparent text-slate-200 focus:outline-none cursor-pointer pr-1 text-[11px]"
           >
             <option value="auto" className="bg-slate-900 text-white">Auto Router (Hardware Aware)</option>
-            {availableModels.map((m) => (
+            {(availableModels || []).map((m) => (
               <option key={m} value={m} className="bg-slate-900 text-white">
                 {m} (Local Ollama)
               </option>
             ))}
-            {!availableModels.includes("qwen2.5-coder:1.5b") && (
+            {!(availableModels || []).includes("qwen2.5-coder:1.5b") && (
               <option value="qwen2.5-coder:1.5b" className="bg-slate-900 text-white">
                 qwen2.5-coder:1.5b (Default)
               </option>

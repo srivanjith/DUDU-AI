@@ -78,9 +78,10 @@ export function SidebarMemory({ onOpenFullView }: SidebarMemoryProps) {
     }
   };
 
-  const filtered = memories.filter((m) =>
-    m.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (m.tags || []).some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()))
+  const safeMemories = memories || [];
+  const filtered = safeMemories.filter((m) =>
+    (m?.content || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (m?.tags || []).some((t) => (t || "").toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (

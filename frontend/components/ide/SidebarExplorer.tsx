@@ -114,9 +114,10 @@ export function SidebarExplorer({
     setRenamedName("");
   };
 
-  const filteredFiles = files.filter((f) =>
-    f.name.toLowerCase().includes(filter.toLowerCase()) ||
-    f.path.toLowerCase().includes(filter.toLowerCase())
+  const safeFiles = files || [];
+  const filteredFiles = safeFiles.filter((f) =>
+    (f?.name || "").toLowerCase().includes(filter.toLowerCase()) ||
+    (f?.path || "").toLowerCase().includes(filter.toLowerCase())
   );
 
   return (

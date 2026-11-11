@@ -190,13 +190,13 @@ export function OpenProjectModal({ isOpen, onClose, onProjectOpened }: OpenProje
           </div>
 
           {/* Quick Paths */}
-          {quickPaths.length > 0 && (
+          {(quickPaths || []).length > 0 && (
             <div className="space-y-1.5">
               <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
                 Quick Locations
               </span>
               <div className="flex flex-wrap gap-2">
-                {quickPaths.map((qp) => (
+                {(quickPaths || []).map((qp) => (
                   <button
                     key={qp.path}
                     type="button"
@@ -223,7 +223,7 @@ export function OpenProjectModal({ isOpen, onClose, onProjectOpened }: OpenProje
                 <span>Recently Opened Projects</span>
               </span>
               <span className="text-[10px] text-slate-500 font-mono">
-                {recentProjects.length} registered
+                {(recentProjects || []).length} registered
               </span>
             </div>
 
@@ -232,13 +232,13 @@ export function OpenProjectModal({ isOpen, onClose, onProjectOpened }: OpenProje
                 <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
                 <span>Loading projects...</span>
               </div>
-            ) : recentProjects.length === 0 ? (
+            ) : (recentProjects || []).length === 0 ? (
               <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/60 text-center text-slate-500">
                 No previous projects recorded.
               </div>
             ) : (
               <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
-                {recentProjects.map((proj) => (
+                {(recentProjects || []).map((proj) => (
                   <div
                     key={proj.id}
                     onClick={() => {
@@ -318,3 +318,4 @@ export function OpenProjectModal({ isOpen, onClose, onProjectOpened }: OpenProje
     </div>
   );
 }
+

@@ -425,13 +425,13 @@ export function TerminalPanel() {
               </button>
             </div>
 
-            {processes.length === 0 ? (
+            {(processes || []).length === 0 ? (
               <div className="py-12 text-center text-slate-500 text-xs">
                 No active development servers or background processes currently running.
               </div>
             ) : (
               <div className="grid gap-3">
-                {processes.map((p) => (
+                {(processes || []).map((p) => (
                   <div
                     key={p.pid}
                     className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl flex items-center justify-between"
@@ -485,13 +485,13 @@ export function TerminalPanel() {
               </button>
             </div>
 
-            {history.length === 0 ? (
+            {(history || []).length === 0 ? (
               <div className="py-12 text-center text-slate-500 text-xs">
                 No execution audit records logged yet.
               </div>
             ) : (
               <div className="space-y-2">
-                {history.slice().reverse().map((h, i) => (
+                {(history || []).slice().reverse().map((h, i) => (
                   <div
                     key={i}
                     className="p-3 bg-slate-900/40 border border-slate-800/80 rounded-lg flex items-center justify-between text-xs"
