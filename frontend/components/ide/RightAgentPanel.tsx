@@ -150,13 +150,21 @@ export function RightAgentPanel({
               )}
             </div>
 
-            {/* Workflow Pipeline Pills */}
-            <div className="flex items-center justify-between text-[9px] font-mono text-slate-500 overflow-x-auto py-0.5">
+            {/* 9-Stage Autonomous Workflow Pipeline */}
+            <div className="flex items-center gap-1 text-[8.5px] font-mono text-slate-500 overflow-x-auto py-1 scrollbar-none">
+              <span className={activeTask?.status === "understanding" ? "text-amber-400 font-bold" : "text-slate-400"}>UNDERSTAND</span>
+              <span>→</span>
+              <span className={activeTask?.status === "inspecting" ? "text-amber-400 font-bold" : "text-slate-400"}>INSPECT</span>
+              <span>→</span>
               <span className={activeTask?.status === "planning" ? "text-amber-400 font-bold" : "text-slate-400"}>PLAN</span>
               <span>→</span>
               <span className={activeTask?.status === "awaiting_approval" ? "text-rose-400 font-bold animate-pulse" : "text-slate-400"}>APPROVE</span>
               <span>→</span>
               <span className={activeTask?.status === "executing" ? "text-indigo-400 font-bold animate-pulse" : "text-slate-400"}>EXECUTE</span>
+              <span>→</span>
+              <span className={activeTask?.status === "observing" ? "text-sky-400 font-bold" : "text-slate-400"}>OBSERVE</span>
+              <span>→</span>
+              <span className={activeTask?.status === "debugging" ? "text-amber-300 font-bold" : "text-slate-400"}>DEBUG</span>
               <span>→</span>
               <span className={activeTask?.status === "verified" ? "text-emerald-400 font-bold" : "text-slate-400"}>VERIFY</span>
               <span>→</span>

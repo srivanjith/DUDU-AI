@@ -99,6 +99,31 @@ class CodeGenerator:
                     syntax_error=err,
                 ))
 
+        # Check for Student Management System
+        if "student" in prompt_lower:
+            from backend.app.intelligence.templates_student_management import get_student_management_files
+            student_files = get_student_management_files()
+            for rel_path, new_code in student_files.items():
+                target_p = root / rel_path
+                old_code = ""
+                action = "create"
+                if target_p.exists() and target_p.is_file():
+                    action = "modify"
+                    old_code = target_p.read_text(encoding="utf-8", errors="replace")
+
+                diff_str = checkpoint_manager.generate_diff(old_code, new_code, rel_path)
+                valid, err = self.validate_syntax(rel_path, new_code)
+                changes.append(ProposedFileChange(
+                    file_path=rel_path,
+                    action=action,
+                    explanation=f"Generate {rel_path} for student management system",
+                    original_content=old_code if old_code else None,
+                    proposed_content=new_code,
+                    diff=diff_str,
+                    syntax_valid=valid,
+                    syntax_error=err,
+                ))
+
         # Check for benchmark acceptance task: Simple Python task management application
         elif "task management" in prompt_lower or ("python" in prompt_lower and ("crud" in prompt_lower or "add, view" in prompt_lower or "task" in prompt_lower)):
             # 1. Models & Storage: task_manager.py

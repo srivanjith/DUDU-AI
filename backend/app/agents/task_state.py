@@ -11,28 +11,36 @@ from pydantic import BaseModel, Field
 
 
 class AgentPhase(str, Enum):
+    UNDERSTAND = "UNDERSTAND"
+    INSPECT = "INSPECT"
     PLAN = "PLAN"
+    APPROVE = "APPROVE"
     EXECUTE = "EXECUTE"
     OBSERVE = "OBSERVE"
-    EVALUATE = "EVALUATE"
-    FIX = "FIX"
+    DEBUG = "DEBUG"
     VERIFY = "VERIFY"
     DELIVER = "DELIVER"
+    # Backwards compatibility aliases
+    EVALUATE = "OBSERVE"
+    FIX = "DEBUG"
 
 
 class TaskStatus(str, Enum):
     QUEUED = "queued"
+    UNDERSTANDING = "understanding"
+    INSPECTING = "inspecting"
     PLANNING = "planning"
     PLANNED = "planned"
     AWAITING_APPROVAL = "awaiting_approval"
     EXECUTING = "executing"
     OBSERVING = "observing"
-    EVALUATING = "evaluating"
-    FIXING = "fixing"
+    DEBUGGING = "debugging"
+    VERIFYING = "verifying"
     VERIFIED = "verified"
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+    PAUSED = "paused"
 
 
 class ExecutionEvent(BaseModel):
