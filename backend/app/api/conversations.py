@@ -119,9 +119,25 @@ async def send_message(conv_id: str, req: SendMessageRequest):
         error_msg = None
 
         # Emit routing info first
-        yield f"data: {json.dumps({'type': 'routing', 'model': selected_model, 'role': route_result.role, 'reason': route_result.reason, 'is_installed': route_result.is_installed})}\n\n"
+        provider = getattr(route_result, "provider", "Ollama")
+        yield f"data: {json.dumps({'type': 'routing', 'model': selected_model, 'role': route_result.role, 'reason': route_result.reason, 'is_installed': route_result.is_installed, 'provider': provider})}\n\n"
 
-        async for chunk in ollama_client.chat_stream(selected_model, formatted_msgs):
+        from backend.app.intelligence.openrouter_client import (
+            openrouter_client,
+            NEMOTRON_MODEL_ID,
+            NEMOTRON_SUPER_VL_ID,
+        )
+
+        if (
+            provider == "OpenRouter"
+            or selected_model in [NEMOTRON_MODEL_ID, NEMOTRON_SUPER_VL_ID]
+            or "nemotron" in selected_model.lower()
+        ):
+            stream_gen = openrouter_client.chat_stream(selected_model, formatted_msgs)
+        else:
+            stream_gen = ollama_client.chat_stream(selected_model, formatted_msgs)
+
+        async for chunk in stream_gen:
             if "error" in chunk:
                 has_error = True
                 error_msg = chunk["error"]

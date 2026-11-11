@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Square, Copy, Check, Sparkles, User, Bot, CornerDownLeft, RotateCcw, AlertCircle, Cpu, CheckCircle2 } from "lucide-react";
+import { Send, Square, Copy, Check, Sparkles, User, Bot, CornerDownLeft, RotateCcw, AlertCircle, Cpu, CheckCircle2, Play, RefreshCw, AlertTriangle } from "lucide-react";
 import { Message } from "@/types";
+import { startOllamaDaemon } from "@/services/api";
 
 interface ChatAreaProps {
   messages: Message[];
@@ -125,6 +126,23 @@ export function ChatArea({
               {isOnline ? (modelCount > 0 ? `Ollama Online (${modelCount} models)` : "Ollama Online (0 models)") : "Ollama Offline"}
             </span>
           </div>
+
+          {!isOnline && (
+            <button
+              onClick={async () => {
+                try {
+                  await startOllamaDaemon();
+                  window.location.reload();
+                } catch (e) {
+                  console.error(e);
+                }
+              }}
+              className="px-2 py-1 bg-emerald-600/90 hover:bg-emerald-500 text-white rounded text-[10px] font-semibold flex items-center gap-1 transition-colors"
+            >
+              <Play className="w-2.5 h-2.5 fill-current" />
+              <span>Start Ollama</span>
+            </button>
+          )}
         </div>
 
         {/* Model Selector Dropdown */}
@@ -222,6 +240,53 @@ export function ChatArea({
                   <div className="font-sans text-[13px]">
                     {renderMessageContent(m.content, idx)}
                   </div>
+
+                  {/* If error: show prominent recovery buttons */}
+                  {isError && !isUser && (
+                    <div className="mt-3 pt-2.5 border-t border-rose-800/40 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleRetry}
+                        disabled={isStreaming}
+                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg font-medium flex items-center gap-1.5 text-xs transition-colors"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Retry</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await startOllamaDaemon();
+                            handleRetry();
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }}
+                        disabled={isStreaming}
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium flex items-center gap-1.5 text-xs transition-colors shadow-sm"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Start Ollama & Retry</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelectModel("nvidia/nemotron-3-ultra-550b-a55b:free");
+                          for (let i = messages.length - 1; i >= 0; i--) {
+                            if (messages[i].role === "user") {
+                              onSendMessage(messages[i].content, "nvidia/nemotron-3-ultra-550b-a55b:free");
+                              break;
+                            }
+                          }
+                        }}
+                        className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium flex items-center gap-1.5 text-xs transition-colors"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Switch to Cloud (Nemotron)</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* Action Buttons: Copy & Retry */}
                   {!isUser && (

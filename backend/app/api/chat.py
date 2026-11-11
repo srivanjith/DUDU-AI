@@ -125,7 +125,13 @@ async def chat_completion(req: ChatCompletionRequest):
         options = {"temperature": req.temperature or 0.3}
 
         # Route to OpenRouter cloud or Ollama local
-        if getattr(route_result, "provider", "") == "OpenRouter" or selected_model == NEMOTRON_MODEL_ID:
+        from backend.app.intelligence.openrouter_client import NEMOTRON_SUPER_VL_ID
+        provider = getattr(route_result, "provider", "Ollama")
+        if (
+            provider == "OpenRouter"
+            or selected_model in [NEMOTRON_MODEL_ID, NEMOTRON_SUPER_VL_ID]
+            or "nemotron" in selected_model.lower()
+        ):
             stream_gen = openrouter_client.chat_stream(selected_model, messages_payload, options=options)
         else:
             stream_gen = ollama_client.chat_stream(selected_model, messages_payload, options=options)
@@ -134,7 +140,7 @@ async def chat_completion(req: ChatCompletionRequest):
             if "error" in chunk:
                 has_error = True
                 error_details = chunk["error"]
-                yield f"data: {json.dumps({'type': 'error', 'error': error_details, 'error_code': chunk.get('error_code'), 'model': selected_model, 'can_fallback_to_qwen': chunk.get('can_fallback_to_qwen', False)})}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'error': error_details, 'error_code': chunk.get('error_code'), 'model': selected_model, 'provider': provider, 'can_start_ollama': chunk.get('can_start', provider == 'Ollama'), 'can_fallback_to_qwen': chunk.get('can_fallback_to_qwen', False)})}\n\n"
                 break
 
             token = chunk.get("content", "")
@@ -231,7 +237,12 @@ async def websocket_chat_endpoint(websocket: WebSocket, conversation_id: str):
             accumulated = []
             cancelled = False
 
-            if getattr(route_res, "provider", "") == "OpenRouter" or model_to_use == NEMOTRON_MODEL_ID:
+            ws_provider = getattr(route_res, "provider", "")
+            if (
+                ws_provider == "OpenRouter"
+                or model_to_use in [NEMOTRON_MODEL_ID, NEMOTRON_SUPER_VL_ID]
+                or "nemotron" in model_to_use.lower()
+            ):
                 stream_gen = openrouter_client.chat_stream(model_to_use, formatted)
             else:
                 stream_gen = ollama_client.chat_stream(model_to_use, formatted)

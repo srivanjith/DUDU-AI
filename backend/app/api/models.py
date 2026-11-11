@@ -67,3 +67,32 @@ def set_model_role(req: SetRoleModelRequest):
 def get_model_metrics(limit: int = 50):
     """Retrieves latency and throughput metrics for models."""
     return BaseRepository("model_metrics").find_all(limit=limit, sort=[("timestamp", -1)])
+
+
+@router.get("/models/ollama/health")
+@router.get("/api/models/ollama/health")
+@router.get("/api/ollama/health")
+async def get_ollama_health(refresh: bool = False):
+    """Returns actual operational connectivity to Ollama inference daemon."""
+    from backend.app.intelligence.openrouter_client import openrouter_client, NEMOTRON_MODEL_ID, NEMOTRON_SUPER_VL_ID
+    health = await ollama_client.check_health(force_refresh=refresh)
+    return {
+        **health,
+        "openrouter": {
+            "status": "configured" if openrouter_client.is_configured() else "unconfigured",
+            "is_configured": openrouter_client.is_configured(),
+            "models": [NEMOTRON_MODEL_ID, NEMOTRON_SUPER_VL_ID],
+        },
+    }
+
+
+@router.post("/models/ollama/start")
+@router.post("/api/models/ollama/start")
+@router.post("/api/ollama/start")
+async def start_ollama_daemon(timeout: int = 10):
+    """
+    Spawns the local Ollama background daemon on Windows/host if offline.
+    Polls until responsive and returns health confirmation.
+    """
+    result = await ollama_client.start_daemon(timeout_seconds=timeout)
+    return result

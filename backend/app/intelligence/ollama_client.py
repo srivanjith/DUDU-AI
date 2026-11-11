@@ -1,6 +1,10 @@
 import asyncio
 import json
 import logging
+import os
+import platform
+import shutil
+import subprocess
 import time
 from typing import Any, AsyncGenerator, Dict, List, Optional
 import httpx
@@ -19,20 +23,48 @@ class ModelNotFoundError(Exception):
     pass
 
 
+def find_ollama_executable() -> Optional[str]:
+    """Finds the local Ollama binary across PATH and standard platform locations."""
+    # 1. System PATH
+    p = shutil.which("ollama")
+    if p and os.path.isfile(p):
+        return p
+
+    # 2. Windows standard installation locations
+    if platform.system() == "Windows":
+        local_app_data = os.environ.get("LOCALAPPDATA", "")
+        if local_app_data:
+            candidate = os.path.join(local_app_data, "Programs", "Ollama", "ollama.exe")
+            if os.path.isfile(candidate):
+                return candidate
+        prog_files = os.environ.get("ProgramFiles", "")
+        if prog_files:
+            candidate = os.path.join(prog_files, "Ollama", "ollama.exe")
+            if os.path.isfile(candidate):
+                return candidate
+    return None
+
+
 class OllamaClient:
     """
     Client for interacting with local Ollama inference server.
     Provides strict health checks, dynamic model discovery, capability inspection,
-    streaming completions, and graceful error handling.
-    Does NOT fabricate model responses.
+    streaming completions, background daemon spawning for Windows/local dev,
+    and graceful error handling. Does NOT fabricate model responses.
     """
 
     def __init__(self, base_url: Optional[str] = None):
         self.base_url = (base_url or settings.OLLAMA_BASE_URL).rstrip("/")
         self.timeout = settings.OLLAMA_TIMEOUT_SECONDS
+        self._last_health: Optional[Dict[str, Any]] = None
+        self._last_health_ts: float = 0.0
 
-    async def check_health(self) -> Dict[str, Any]:
+    async def check_health(self, force_refresh: bool = False) -> Dict[str, Any]:
         """Checks if Ollama daemon is running, responsive, and measures latency."""
+        now = time.time()
+        if not force_refresh and self._last_health and (now - self._last_health_ts < 2.0):
+            return self._last_health
+
         start_time = time.perf_counter()
         try:
             async with httpx.AsyncClient(timeout=2.0) as client:
@@ -41,25 +73,99 @@ class OllamaClient:
                 if res.status_code == 200:
                     version_info = res.json()
                     models = await self.list_models()
-                    return {
+                    result = {
                         "status": "online",
                         "version": version_info.get("version", "unknown"),
                         "base_url": self.base_url,
                         "latency_ms": latency_ms,
                         "model_count": len(models),
                         "models": [m.get("name", "") for m in models],
+                        "can_start": False,
                     }
+                    self._last_health = result
+                    self._last_health_ts = now
+                    return result
         except Exception as e:
             logger.debug(f"Ollama health check failed: {e}")
 
-        return {
+        exe_path = find_ollama_executable()
+        result = {
             "status": "offline",
             "base_url": self.base_url,
             "latency_ms": None,
-            "error": f"Ollama service is not reachable at {self.base_url}. Start it with 'ollama serve'.",
+            "error": f"Ollama service is not reachable at {self.base_url}.",
             "model_count": 0,
             "models": [],
+            "can_start": bool(exe_path),
+            "executable_path": exe_path,
         }
+        self._last_health = result
+        self._last_health_ts = now
+        return result
+
+    async def start_daemon(self, timeout_seconds: int = 10) -> Dict[str, Any]:
+        """
+        Attempts to start the local Ollama daemon if offline on the host machine.
+        Returns operational status and verification.
+        """
+        current_health = await self.check_health(force_refresh=True)
+        if current_health.get("status") == "online":
+            return {
+                "status": "online",
+                "message": "Ollama daemon is already online and operational.",
+                "version": current_health.get("version"),
+                "models": current_health.get("models", []),
+            }
+
+        exe = find_ollama_executable()
+        if not exe:
+            return {
+                "status": "error",
+                "error": "Ollama executable not found on host machine. Please install Ollama from https://ollama.com.",
+                "can_start": False,
+            }
+
+        try:
+            creationflags = 0
+            if platform.system() == "Windows":
+                # DETACHED_PROCESS and CREATE_NO_WINDOW
+                creationflags = 0x00000008 | 0x08000000
+
+            proc = subprocess.Popen(
+                [exe, "serve"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                creationflags=creationflags,
+                shell=False,
+            )
+            logger.info(f"Spawned Ollama background daemon process PID={proc.pid}")
+
+            # Poll for daemon availability
+            start_t = time.perf_counter()
+            while time.perf_counter() - start_t < timeout_seconds:
+                await asyncio.sleep(0.5)
+                h = await self.check_health(force_refresh=True)
+                if h.get("status") == "online":
+                    return {
+                        "status": "online",
+                        "message": "Ollama daemon started successfully and is operational.",
+                        "pid": proc.pid,
+                        "version": h.get("version"),
+                        "models": h.get("models", []),
+                    }
+
+            return {
+                "status": "starting",
+                "message": f"Ollama daemon process (PID {proc.pid}) was spawned, but initialization is taking longer than {timeout_seconds}s.",
+                "pid": proc.pid,
+            }
+        except Exception as e:
+            logger.error(f"Failed to start Ollama daemon: {e}")
+            return {
+                "status": "error",
+                "error": f"Failed to start Ollama daemon process: {str(e)}",
+            }
 
     async def list_models(self) -> List[Dict[str, Any]]:
         """Discovers locally installed models in Ollama with sizes and metadata."""
@@ -124,7 +230,7 @@ class OllamaClient:
         if health["status"] != "online":
             err_msg = (
                 f"Ollama inference daemon is offline at {self.base_url}.\n\n"
-                "To start Ollama locally, run in your terminal:\n"
+                "To start Ollama locally, click 'Start Ollama' or run in your terminal:\n"
                 "```powershell\n"
                 "ollama serve\n"
                 "```"
@@ -134,6 +240,8 @@ class OllamaClient:
                 "error_code": "OLLAMA_OFFLINE",
                 "done": True,
                 "model": model,
+                "base_url": self.base_url,
+                "can_start": health.get("can_start", False),
             }
             return
 
@@ -153,6 +261,7 @@ class OllamaClient:
                 "error_code": "MODEL_NOT_FOUND",
                 "done": True,
                 "model": model,
+                "installed_models": installed_names,
             }
             return
 
@@ -196,10 +305,25 @@ class OllamaClient:
                                 }
                             except Exception:
                                 continue
+        except httpx.ConnectError:
+            yield {
+                "error": f"Connection refused by Ollama daemon at {self.base_url}. The daemon may have stopped or restarted.",
+                "error_code": "OLLAMA_OFFLINE",
+                "done": True,
+                "model": model,
+                "can_start": True,
+            }
         except httpx.TimeoutException:
             yield {
                 "error": f"Inference timed out after {self.timeout} seconds.",
                 "error_code": "INFERENCE_TIMEOUT",
+                "done": True,
+                "model": model,
+            }
+        except (httpx.RemoteProtocolError, httpx.ReadError) as e:
+            yield {
+                "error": f"Streaming connection interrupted by server ({type(e).__name__}). Ollama may have crashed or restarted.",
+                "error_code": "STREAM_INTERRUPTED",
                 "done": True,
                 "model": model,
             }

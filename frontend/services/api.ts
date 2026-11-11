@@ -289,14 +289,16 @@ export function streamChatMessage(
           const lines = buffer.split("\n\n");
           buffer = lines.pop() || "";
 
-          for (const line of lines) {
+            for (const line of lines) {
             if (line.startsWith("data: ")) {
               try {
                 const data = JSON.parse(line.substring(6));
-                if (data.type === "token" && data.token) {
+                if (data.type === "routing" && data.model) {
+                  onToken("", data.model);
+                } else if (data.type === "token" && data.token) {
                   onToken(data.token, data.model || model);
                 } else if (data.type === "error") {
-                  onError(data.error);
+                  onError(data.error || "An inference error occurred");
                   return;
                 } else if (data.type === "done") {
                   onComplete();
@@ -581,6 +583,25 @@ export async function fetchProjectFiles(id: string, depth = 3) {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || "Failed to fetch project files");
+  }
+  return res.json();
+}
+
+export async function startOllamaDaemon(timeout = 10) {
+  const res = await fetch(`${API_BASE}/api/models/ollama/start?timeout=${timeout}`, {
+    method: "POST",
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || `HTTP ${res.status}: Failed to start Ollama`);
+  }
+  return data;
+}
+
+export async function fetchOllamaHealth(refresh = false) {
+  const res = await fetch(`${API_BASE}/api/models/ollama/health?refresh=${refresh}`);
+  if (!res.ok) {
+    return { status: "offline", error: `HTTP ${res.status}` };
   }
   return res.json();
 }

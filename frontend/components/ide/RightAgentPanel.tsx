@@ -25,8 +25,11 @@ import {
   Eye,
   FileCode,
   X,
+  RotateCcw,
+  Cpu,
 } from "lucide-react";
 import { AgentTask, TaskStep, Message } from "@/types";
+import { startOllamaDaemon } from "@/services/api";
 
 interface RightAgentPanelProps {
   tasks: AgentTask[];
@@ -44,6 +47,9 @@ interface RightAgentPanelProps {
   onSelectModel: (m: string) => void;
   onClose: () => void;
   width?: number;
+  ollamaStatus?: "online" | "offline" | "checking";
+  onStartOllama?: () => Promise<void>;
+  onRetryChat?: () => void;
 }
 
 export function RightAgentPanel({
@@ -62,11 +68,51 @@ export function RightAgentPanel({
   onSelectModel,
   onClose,
   width,
+  ollamaStatus = "online",
+  onStartOllama,
+  onRetryChat,
 }: RightAgentPanelProps) {
   const [mode, setMode] = useState<"developer" | "chat">("developer");
   const [prompt, setPrompt] = useState("");
   const [chatInput, setChatInput] = useState("");
   const [showEventTimeline, setShowEventTimeline] = useState(false);
+  const [isStartingOllama, setIsStartingOllama] = useState(false);
+  const [ollamaStartMsg, setOllamaStartMsg] = useState<string | null>(null);
+
+  const handleStartOllama = async () => {
+    setIsStartingOllama(true);
+    setOllamaStartMsg("Spawning Ollama daemon in background...");
+    try {
+      const res = await startOllamaDaemon();
+      if (res.status === "online") {
+        setOllamaStartMsg("✓ Ollama daemon is now online!");
+        if (onStartOllama) {
+          await onStartOllama();
+        }
+      } else {
+        setOllamaStartMsg(res.message || "Initializing Ollama daemon...");
+      }
+    } catch (err: any) {
+      setOllamaStartMsg(`Failed: ${err.message || "Could not spawn Ollama"}`);
+    } finally {
+      setIsStartingOllama(false);
+      setTimeout(() => setOllamaStartMsg(null), 8000);
+    }
+  };
+
+  const handleRetryLast = () => {
+    if (onRetryChat) {
+      onRetryChat();
+      return;
+    }
+    // Search backwards for the last user message
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        onSendMessage(messages[i].content, selectedModel);
+        break;
+      }
+    }
+  };
 
   const handleDevSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -392,6 +438,36 @@ export function RightAgentPanel({
       {/* Mode B: Conversational AI Assistant View */}
       {mode === "chat" && (
         <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Engine Connectivity Status Bar */}
+          <div className="px-3 py-1.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-[11px]">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-500 font-mono text-[10px]">INFERENCE:</span>
+              <div className="flex items-center gap-1.5 font-medium">
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    ollamaStatus === "online"
+                      ? "bg-emerald-400 shadow-sm shadow-emerald-400/50"
+                      : "bg-rose-500"
+                  }`}
+                />
+                <span className={ollamaStatus === "online" ? "text-emerald-300" : "text-rose-300"}>
+                  {ollamaStatus === "online" ? "Ollama Online" : "Ollama Offline"}
+                </span>
+              </div>
+            </div>
+            {ollamaStatus !== "online" && (
+              <button
+                type="button"
+                onClick={handleStartOllama}
+                disabled={isStartingOllama}
+                className="px-2 py-0.5 bg-emerald-600/80 hover:bg-emerald-500 text-white rounded text-[10px] font-semibold flex items-center gap-1 transition-colors disabled:opacity-50"
+              >
+                <Play className="w-2.5 h-2.5 fill-current" />
+                <span>{isStartingOllama ? "Starting..." : "Start Ollama"}</span>
+              </button>
+            )}
+          </div>
+
           {/* Chat Messages Stream */}
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {messages.length === 0 ? (
@@ -399,12 +475,18 @@ export function RightAgentPanel({
                 <Bot className="w-8 h-8 text-slate-600" />
                 <p className="text-xs font-medium text-slate-400">Ask DODO Anything</p>
                 <p className="text-[11px] text-slate-500 max-w-xs">
-                  Ask code explanation questions, request refactorings, or debug logic directly using local Qwen 2.5 Coder.
+                  Ask code explanation questions, request refactorings, or debug logic directly using local Qwen 2.5 Coder or cloud Nemotron.
                 </p>
               </div>
             ) : (
               messages.map((msg, idx) => {
                 const isUser = msg.role === "user";
+                const isError =
+                  msg.content.includes("Ollama inference daemon is offline") ||
+                  msg.content.includes("⚠️") ||
+                  msg.content.startsWith("Error:") ||
+                  msg.generation_status === "error";
+
                 return (
                   <div
                     key={idx}
@@ -416,15 +498,72 @@ export function RightAgentPanel({
                         <span className="font-mono text-indigo-400">({msg.model_used})</span>
                       )}
                     </div>
-                    <div
-                      className={`p-2.5 rounded-lg max-w-[95%] text-xs leading-relaxed whitespace-pre-wrap break-words ${
-                        isUser
-                          ? "bg-amber-500/10 text-amber-200 border border-amber-500/30"
-                          : "bg-slate-900 text-slate-200 border border-slate-800 font-mono"
-                      }`}
-                    >
-                      {msg.content}
-                    </div>
+
+                    {isError && !isUser ? (
+                      /* Rich Connection Error & Recovery Card */
+                      <div className="p-3 rounded-lg max-w-[95%] text-xs leading-relaxed bg-rose-950/40 border border-rose-800/60 text-rose-200 space-y-2">
+                        <div className="flex items-center gap-1.5 font-bold text-amber-400">
+                          <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                          <span>Connection Warning: Model Offline</span>
+                        </div>
+                        <div className="font-mono text-[11px] whitespace-pre-wrap leading-relaxed text-slate-300">
+                          {msg.content}
+                        </div>
+                        {/* Interactive Recovery Actions */}
+                        <div className="pt-2 border-t border-rose-800/40 flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleStartOllama}
+                            disabled={isStartingOllama}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded font-medium flex items-center gap-1 text-[11px] transition-colors shadow-sm"
+                          >
+                            <RefreshCw className={`w-3 h-3 ${isStartingOllama ? "animate-spin" : ""}`} />
+                            <span>{isStartingOllama ? "Starting Ollama..." : "Start Ollama"}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleRetryLast}
+                            disabled={isStreamingChat}
+                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded font-medium flex items-center gap-1 text-[11px] transition-colors"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            <span>Retry</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onSelectModel("nvidia/nemotron-3-ultra-550b-a55b:free");
+                              for (let i = messages.length - 1; i >= 0; i--) {
+                                if (messages[i].role === "user") {
+                                  onSendMessage(messages[i].content, "nvidia/nemotron-3-ultra-550b-a55b:free");
+                                  break;
+                                }
+                              }
+                            }}
+                            className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded font-medium flex items-center gap-1 text-[11px] transition-colors"
+                            title="Route directly through OpenRouter cloud without Ollama"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            <span>Use Cloud (Nemotron)</span>
+                          </button>
+                        </div>
+                        {ollamaStartMsg && (
+                          <div className="text-[10px] text-emerald-300 font-mono pt-1">
+                            {ollamaStartMsg}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        className={`p-2.5 rounded-lg max-w-[95%] text-xs leading-relaxed whitespace-pre-wrap break-words ${
+                          isUser
+                            ? "bg-amber-500/10 text-amber-200 border border-amber-500/30"
+                            : "bg-slate-900 text-slate-200 border border-slate-800 font-mono"
+                        }`}
+                      >
+                        {msg.content}
+                      </div>
+                    )}
                   </div>
                 );
               })

@@ -750,6 +750,8 @@ export default function DodoIDE() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenProjectModal={() => setIsOpenProjectOpen(true)}
         onNewProjectModal={() => setIsNewProjectOpen(true)}
+        ollamaStatus={health?.inference_engine?.status === "online" ? "online" : "offline"}
+        openRouterConfigured={health?.openrouter?.is_configured}
       />
 
       {/* 2. MAIN WORKSPACE ROW */}
@@ -917,6 +919,16 @@ export default function DodoIDE() {
             onSelectModel={setSelectedModel}
             onClose={() => setShowRightAgent(false)}
             width={rightAgentWidth}
+            ollamaStatus={health?.inference_engine?.status === "online" ? "online" : "offline"}
+            onStartOllama={loadHealth}
+            onRetryChat={() => {
+              for (let i = messages.length - 1; i >= 0; i--) {
+                if (messages[i].role === "user") {
+                  handleSendMessage(messages[i].content, selectedModel);
+                  break;
+                }
+              }
+            }}
           />
         )}
       </div>

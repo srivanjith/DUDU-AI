@@ -108,22 +108,20 @@ class ModelRouter:
     async def route(self, prompt: str, requested_model: Optional[str] = None) -> TaskClassificationResult:
         """
         Executes high-performance routing workflow:
-        1. If user explicitly requested a model, verify its presence.
+        1. If user explicitly requested a cloud model, route directly to OpenRouter without touching Ollama.
         2. Visual screenshot understanding -> Nemotron Super VL (Cloud OpenRouter).
         3. Complex full-stack / architecture -> Nemotron 3 Ultra (Cloud OpenRouter).
         4. Simple coding / quick bug fixes -> Qwen2.5-Coder (Local Ollama).
         5. Preserves local-only mode and requires cloud consent.
+        6. Accurately reports actual handled model and connectivity status.
         """
-        installed = await ollama_client.list_models()
-        installed_names = [m.get("name", "") for m in installed]
-
         from backend.app.intelligence.openrouter_client import (
             openrouter_client,
             NEMOTRON_MODEL_ID,
             NEMOTRON_SUPER_VL_ID,
         )
 
-        # Explicit user selection
+        # 1. Direct Cloud Route (Zero Ollama dependency)
         if requested_model and requested_model != "auto":
             if requested_model in [NEMOTRON_SUPER_VL_ID, "nemotron-super-vl"] or "super-vl" in requested_model.lower():
                 is_cfg = openrouter_client.is_configured()
@@ -132,7 +130,7 @@ class ModelRouter:
                     complexity="high",
                     selected_model=NEMOTRON_SUPER_VL_ID,
                     role="vision",
-                    reason="User explicitly selected NVIDIA Nemotron Super VL (Visual AI).",
+                    reason="User explicitly selected NVIDIA Nemotron Super VL (Visual AI • Cloud).",
                     is_installed=is_cfg,
                     hardware_fit="Cloud Hosted (0% local VRAM)",
                     provider="OpenRouter",
@@ -151,16 +149,30 @@ class ModelRouter:
                     provider="OpenRouter",
                 )
 
-            is_present = any(requested_model in n or n.startswith(f"{requested_model}:") for n in installed_names)
+        # 2. Local Model Verification
+        ollama_health = await ollama_client.check_health()
+        is_ollama_online = ollama_health.get("status") == "online"
+        installed_names = ollama_health.get("models", []) if is_ollama_online else []
+
+        # Explicit user selection of a local model
+        if requested_model and requested_model != "auto":
+            is_present = is_ollama_online and any(
+                requested_model in n or n.startswith(f"{requested_model}:") for n in installed_names
+            )
             cap = MODEL_CAPABILITY_MATRIX.get(requested_model, {})
             vram_req = cap.get("vram_required_gb", 4.0)
             fit = "100% VRAM offload" if vram_req <= HARDWARE_PROFILE["vram_headroom_gb"] else "Hybrid GPU/RAM offload"
+            reason = (
+                f"User explicitly selected '{requested_model}'."
+                if is_ollama_online
+                else f"User selected '{requested_model}', but Ollama daemon is currently offline."
+            )
             return TaskClassificationResult(
                 task_type="user_override",
                 complexity="user_defined",
                 selected_model=requested_model,
                 role="custom",
-                reason=f"User explicitly selected '{requested_model}'.",
+                reason=reason,
                 is_installed=is_present,
                 hardware_fit=fit,
                 provider="Ollama",
@@ -203,7 +215,7 @@ class ModelRouter:
             "lightweight": "lightweight",
             "general": "general",
             "coding": "coding",
-            "reasoning": "coding",  # fallback to local coding model if cloud disabled
+            "reasoning": "coding",
             "complex_architecture": "coding",
             "vision": "general",
         }
@@ -211,11 +223,16 @@ class ModelRouter:
         configured_model = model_registry.get_model_for_role(target_role)
 
         selected_model = configured_model
-        is_installed = any(configured_model in name or name.startswith(f"{configured_model}:") for name in installed_names)
-        reason = f"Routed to local {target_role} model '{configured_model}' ({complexity} complexity)."
+        is_installed = is_ollama_online and any(
+            configured_model in name or name.startswith(f"{configured_model}:") for name in installed_names
+        )
+        if not is_ollama_online:
+            reason = f"Auto-routed to {configured_model} (Local • Ollama), but Ollama daemon is offline."
+        else:
+            reason = f"Auto-routed to local {target_role} model '{configured_model}' ({complexity} complexity)."
 
         # If configured model is not installed but another model is installed, gracefully select best installed
-        if not is_installed and installed_names:
+        if is_ollama_online and not is_installed and installed_names:
             selected_model = installed_names[0]
             is_installed = True
             reason = f"Preferred '{configured_model}' is not downloaded. Dynamically routed to installed '{selected_model}'."
@@ -232,6 +249,7 @@ class ModelRouter:
             reason=reason,
             is_installed=is_installed,
             hardware_fit=fit,
+            provider="Ollama",
         )
 
 

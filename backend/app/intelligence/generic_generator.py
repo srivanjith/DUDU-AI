@@ -12,12 +12,31 @@ def analyze_domain_entity(prompt: str) -> Dict[str, Any]:
     Extracts the core entity name, attributes, and fields from natural language.
     """
     p = prompt.lower()
-    if "task" in p:
+    if "student" in p or "school" in p or "university" in p or "enroll" in p:
+        return {
+            "entity": "Student",
+            "entity_plural": "Students",
+            "table_name": "students",
+            "title_field": "name",
+            "use_sqlite": "sqlite" in p,
+            "fields": [
+                {"name": "name", "type": "str", "required": True, "label": "Student Name", "example": "Alex Morgan"},
+                {"name": "email", "type": "str", "required": True, "label": "Email Address", "example": "alex.morgan@university.edu"},
+                {"name": "major", "type": "str", "required": True, "label": "Major", "options": ["Computer Science", "Electrical Engineering", "Data Science", "Mathematics", "Mechanical Engineering"]},
+                {"name": "year", "type": "str", "required": False, "default": '"Senior"', "label": "Year", "options": ["Freshman", "Sophomore", "Junior", "Senior"]},
+                {"name": "gpa", "type": "float", "required": False, "default": "3.85", "label": "GPA", "example": "3.85"},
+                {"name": "status", "type": "str", "required": False, "default": '"Active"', "label": "Status", "options": ["Active", "Enrolled", "Graduated", "On Leave"]},
+            ],
+            "stats_metric": "enrolled_count",
+            "metric_label": "Active Students",
+        }
+    elif "task" in p:
         return {
             "entity": "Task",
             "entity_plural": "Tasks",
             "table_name": "tasks",
             "title_field": "title",
+            "use_sqlite": "sqlite" in p,
             "fields": [
                 {"name": "title", "type": "str", "required": True, "label": "Task Title", "example": "Implement User Authentication"},
                 {"name": "description", "type": "str", "required": False, "default": '""', "label": "Description", "example": "Add OAuth2 with JWT token support"},

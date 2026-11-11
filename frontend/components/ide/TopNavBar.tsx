@@ -40,6 +40,8 @@ interface TopNavBarProps {
   onOpenSettings: () => void;
   onOpenProjectModal: () => void;
   onNewProjectModal: () => void;
+  ollamaStatus?: "online" | "offline";
+  openRouterConfigured?: boolean;
 }
 
 export function TopNavBar({
@@ -62,6 +64,8 @@ export function TopNavBar({
   onOpenSettings,
   onOpenProjectModal,
   onNewProjectModal,
+  ollamaStatus = "online",
+  openRouterConfigured = true,
 }: TopNavBarProps) {
   const getAgentStatusBadge = () => {
     switch (agentStatus) {
@@ -201,7 +205,7 @@ export function TopNavBar({
           )}
         </button>
 
-        {/* Model Selector Dropdown */}
+        {/* Model Selector Dropdown & Connection Status */}
         <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded px-2 py-0.5 text-[11px]">
           <Cpu className="w-3 h-3 text-indigo-400" />
           <select
@@ -229,6 +233,25 @@ export function TopNavBar({
               </option>
             </optgroup>
           </select>
+
+          {/* Model Provider Live Status Indicator */}
+          {selectedModel.includes("nemotron") ? (
+            <span
+              className={`w-2 h-2 rounded-full ${
+                openRouterConfigured ? "bg-emerald-400 shadow-sm shadow-emerald-400/50" : "bg-amber-400"
+              }`}
+              title={openRouterConfigured ? "OpenRouter Cloud API Connected" : "OpenRouter API Key Missing"}
+            />
+          ) : (
+            <span
+              className={`w-2 h-2 rounded-full ${
+                ollamaStatus === "online"
+                  ? "bg-emerald-400 shadow-sm shadow-emerald-400/50"
+                  : "bg-rose-500 animate-pulse"
+              }`}
+              title={ollamaStatus === "online" ? "Local Ollama Daemon Online" : "Local Ollama Daemon Offline"}
+            />
+          )}
         </div>
 
         {/* Agent Status Pill */}
