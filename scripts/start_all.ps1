@@ -1,4 +1,4 @@
-﻿# DODO One-Click Local Launcher
+# DODO One-Click Local Launcher
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "   🦅 Launching DODO Local Platform    " -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan

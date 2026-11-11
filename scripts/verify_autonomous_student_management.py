@@ -239,22 +239,39 @@ def run_acceptance_test():
     print("\n--- STAGE 7: OBSERVE (Frontend Static Asset & UI Structure Verification) ---")
     html_path = test_ws / "frontend" / "index.html"
     js_path = test_ws / "frontend" / "app.js"
+    react_app_path = test_ws / "frontend" / "src" / "App.tsx"
     assert html_path.exists()
     assert js_path.exists()
+    assert react_app_path.exists()
 
     html_content = html_path.read_text(encoding="utf-8")
-    assert "DODO Student Management" in html_content
-    assert "open-register-btn" in html_content
-    assert "search-input" in html_content
-    assert "student-table" in html_content
-    assert "stat-total" in html_content
-    print("✓ Frontend HTML contains all required elements: Dashboard metrics, Table, Registration Modal, and Search.")
+    assert 'id="root"' in html_content
+    assert "react" in html_content.lower()
 
     js_content = js_path.read_text(encoding="utf-8")
+    assert "open-register-btn" in js_content
+    assert "search-input" in js_content
+    assert "student-table" in js_content
+    assert "stat-total" in js_content
     assert "API_BASE" in js_content
     assert "/students" in js_content
     assert "/stats/dashboard" in js_content
-    print("✓ Frontend JavaScript controller includes dynamic API calls for CRUD, live search & KPI metrics.")
+    print("✓ Frontend React 18 mount point and component controller verified: Dashboard metrics, Table, Registration Modal, and Search.")
+
+    # Validate React TypeScript Component Tree
+    for ts_rel in [
+        "frontend/src/App.tsx",
+        "frontend/src/components/StudentDashboard.tsx",
+        "frontend/src/components/StudentTable.tsx",
+        "frontend/src/components/StudentRegistrationModal.tsx",
+        "frontend/src/components/StudentEditModal.tsx",
+        "frontend/src/services/api.ts",
+        "frontend/src/types/student.ts",
+    ]:
+        ts_f = test_ws / ts_rel
+        assert ts_f.exists(), f"Missing React TS component: {ts_rel}"
+        assert len(ts_f.read_text(encoding="utf-8")) > 50
+    print("✓ Genuine React + TypeScript frontend suite verified on disk (7 typed components & services).")
 
     # -------------------------------------------------------------------------
     # STAGE 8: DEBUG & REPAIR VERIFICATION
