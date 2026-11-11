@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from bson import ObjectId
+import certifi
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from backend.app.core.config import settings
@@ -53,6 +54,7 @@ class MongoDBManager:
                 serverSelectionTimeoutMS=settings.MONGODB_SERVER_SELECTION_TIMEOUT_MS,
                 maxPoolSize=settings.MONGODB_MAX_POOL_SIZE,
                 minPoolSize=settings.MONGODB_MIN_POOL_SIZE,
+                tlsCAFile=certifi.where(),
                 connect=False,
             )
             # Verify connection with ping

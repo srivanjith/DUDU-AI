@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from bson import ObjectId
+import certifi
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 
@@ -34,6 +35,7 @@ class DatabaseMigrationManager:
                 target_uri,
                 serverSelectionTimeoutMS=3000,
                 connectTimeoutMS=3000,
+                tlsCAFile=certifi.where(),
             )
             client.admin.command("ping")
             return True, f"Successfully connected to MongoDB ({redact_secrets(target_uri)})", client
